@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title> Git源码解读 &middot; Thinking Cell </title>
+
+
+<link rel="stylesheet" href="https://drivebyer.github.iocss/slim.css">
+<link rel="stylesheet" href="https://drivebyer.github.iocss/highlight.min.css">
+<link href='https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,700|Source+Code+Pro' rel='stylesheet' type='text/css'>
+
+<link rel="apple-touch-icon-precomposed" sizes="144x144" href="/apple-touch-icon-144-precomposed.png">
+<link rel="shortcut icon" href="/favicon.ico">
+
+
+<link href="" rel="alternate" type="application/rss+xml" title="Thinking Cell" />
+
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+  <h1 class="site-title"><a href="https://drivebyer.github.io">Thinking Cell</a></h1>
+  <p class="site-tagline"></p>
+  <div class="nav">
+    <a class="nav-btn" href="#">
+      <span class="ci ci-burger"></span>
+    </a>
+    <ul class="nav-list">
+       
+	  <li class="spacer">&ac;</li>
+  
+    </ul>
+  </div>
+</div>
+    <div class="content">
+      <div class="post">
+        <h2 class="post-title"><a href="https://drivebyer.github.io/posts/git%E6%BA%90%E7%A0%81%E8%A7%A3%E8%AF%BB/">Git源码解读</a></h2>
+        <div class="post-content">
+          <blockquote>
+<p>TIPS：本文对 Git 的介绍基于 Git(commit e83c5163316f89bfbde7d9ab23ca2e25604af290)，这是 Git 的第一次提交。</p>
+</blockquote>
+<h2 id="一结构初探">一、结构初探</h2>
+<p>从 Github 上克隆 Git 源代码，将版本切换到第一个 commit，目录结构如下：</p>
+<pre tabindex="0"><code>├── Makefile
+├── README
+├── cache.h
+├── cat-file.c
+├── commit-tree.c
+├── init-db.c
+├── read-cache.c
+├── read-tree.c
+├── show-diff.c
+├── update-cache.c
+├── write-tree.c
+</code></pre><p>目录结构十分简单，先看看 README 文件的内容，了解一下 Linus 最初是怎么介绍 Git 的。</p>
+<p>Git 的设计中有两类抽象：object database 和 current directory cache。</p>
+<h3 id="1-the-object-database">1. The Object Database</h3>
+<p>object database 是一系列 object 的集合。在这个集合中，object 间可以互相引用，它们之间形成一种层级关系。</p>
+<p>在 Git 中不会直接操作一个原生的 object，而是操作处理后的 object，一个 object 会经过如下处理：</p>
+<pre tabindex="0"><code>+------+    zlib    +------+    SHA1    +------+
+|object| +--------&gt; | ...  | +--------&gt; | ...  |
++------+  size+type +------+            +------+
+</code></pre><p>TIPS：在压缩 object 前，会将其 size 和 type 写入起始位置一并压缩。</p>
+<p>对于 object 来说，有以下两种 type：</p>
+<h4 id="blob">BLOB</h4>
+<p>BLOB 具有下列属性：</p>
+<ol>
+<li>no refer to anything else</li>
+<li>no name</li>
+<li>no permission</li>
+</ol>
+<p>Linus 将 BLOB 称为 file contents。既然有 file contents，那就还会有 “file attribute”，这就是 TREE：</p>
+<h4 id="tree">TREE</h4>
+<p>结合 BLOB 不难推测，TREE 应该具有下列属性：</p>
+<ol>
+<li>refer to anything else</li>
+<li>name</li>
+<li>permission</li>
+</ol>
+<h4 id="changeset">CHANGESET</h4>
+<h3 id="2-current-directory-cache">2. Current Directory Cache</h3>
+<p>NIL</p>
+<h2 id="二初始化版本库">二、初始化版本库</h2>
+<blockquote>
+<p>GIT - the stupid content tracker.</p>
+</blockquote>
+<p>下面我们一步步来学习 Git 是如何做好一个 content tracker 的。在开始之前，需要对源码进行构建，才会得到相应的 Git 命令。</p>
+<h3 id="1-init-db">1. init-db</h3>
+<p>在 test_git 目录下执行 <code>init_db</code>，会创建出如下目录结构：</p>
+<pre tabindex="0"><code>test_git/
+└── .dircache
+    └── objects
+        ├── 00
+        ├── 01
+        ├── fe
+        ...
+        └── ff
+</code></pre><p>目录 <code>test_git/.dircache/objects/</code> 就是前面提过的 <strong>Object Database</strong>。</p>
+<h3 id="2-update-cache">2. update-cache</h3>
+<p>假设现在有一个学生名单和教室名单：</p>
+<pre tabindex="0"><code>root@master:~/Github/test_git# ls
+students  teachers
+root@master:~/Github/test_git# cat students 
+Zhang San
+root@master:~/Github/test_git# cat teachers 
+Mr. Wang
+</code></pre><p>我们使用 Git 来跟踪这两个文件内容的变更，首先，Git 需要知道文件修改前的样子，我们使用 <code>update-cache</code> 来告诉它：</p>
+<pre tabindex="0"><code>root@master:~/Github/test_git# ../git/update-cache teachers students 
+root@master:~/Github/test_git# tree .dircache/ -a
+.dircache/
+├── index
+└── objects
+    ├── 00
+    ├── 01
+		...
+    ├── 2f
+    │   └── 942698bb0133aa13b46a1001ec7a718dbc32b8
+    ├── 30
+		...
+    ├── 3a
+    │   └── c6ffce6b04e98c992a7dde76a5b7fab88be34f
+    ├── 3b
+		...
+    └── ff
+</code></pre><p>执行这个命令后，新增了 3 个文件，这 3 个文件描述了名单修改前的样子，看看这文件里的内容是什么：</p>
+<pre tabindex="0"><code>root@master:~/Github# cat test_git/.dircache/index 
+CRIDw ??f??{B??7????????_b??-??_b??-????
+:???k錙*}?v??????studentsroot@master:~/Github# 
+root@master:~/Github# cat test_git/.dircache/objects/3a/c6ffce6b04e98c992a7dde76a5b7fab88be34f 
+x?K??OR04`??H?KN??4?eroot@master:~/Github#
+</code></pre><p>看来内容加密了，读一读源码 <code>update_cache.c</code> 看看到底发生了什么。<code>update_cache.c</code> 主流程如下：</p>
+<pre tabindex="0"><code>main/
+├── read_cache
+├── verify_path
+├── add_file_to_cache
+│   └── index_fd
+│       └── write_sha1_buffer
+│   └── add_cache_entry
+└── write_cache
+</code></pre><p>函数名中的的 <strong>cache</strong> 也就是上面的 index 文件，也就是 <strong>Current Directory Cache</strong>。执行 <code>update_cache students teachers</code> 后，将 students 和 teachers 转换成 <code>cache_entry</code> 写入 index 文件中。index 文件的内容格式如下：</p>
+<pre tabindex="0"><code>/*
++------------+
+|cache_header|
++------------+
+|cache_entry |
++------------+
+|    ...     |
++------------+
+|cache_entry |
++------------+
+*/
+struct cache_header {
+	unsigned int signature;
+	unsigned int version;
+	unsigned int entries;
+	unsigned char sha1[20];
+};
+struct cache_entry {
+	struct cache_time ctime;
+	struct cache_time mtime;
+	unsigned int st_dev;
+	unsigned int st_ino;
+	unsigned int st_mode;
+	unsigned int st_uid;
+	unsigned int st_gid;
+	unsigned int st_size;
+	unsigned char sha1[20]; // 用当前文件内容生成 sha1 的值，用 sha1 生成 blob 文件名
+	unsigned short namelen;
+	unsigned char name[0];
+};
+</code></pre><p>不难看出，index 文件中记录了 Git 当前跟踪的文件元信息。</p>
+<p><strong>update_cache</strong> 流程中，最重要的是函数 <code>add_file_to_cache()</code> ，它主要做了以下几件事：</p>
+<ol>
+<li>在 <code>cache_entry</code> 中记录当下文件的元数据（file attribute?）；</li>
+<li>将内容为：  <code>blob ${size of students}${file content of students}</code> 写入文件名：.dircache/objects/03/c6ffce6b04e98c992a7dde76a5b7fab88be34f；</li>
+<li>将文件的 <code>cache_entry</code> 加入 index，如果存在同名文件，则替换（即，index 文件中记录着 Git 追踪文件的最新信息）。</li>
+</ol>
+<p>这下，我们总算知道了新增的文件中的内容了。至此，我们可以做一个小总结：</p>
+<p>一个 Git 管理的代码库，分为 3 部分：</p>
+<ol>
+<li>被管理的文件：记录着最新 file attribute 与 file content</li>
+<li>.dircache/index：记录着上一次 update-cache 的状态</li>
+<li>.dicache/objects/：记录着诸多历史 file content，它们由 Git 管理</li>
+</ol>
+<blockquote>
+<p>思考：目前为止，我们已经接触到了 Current Directory Cache、BLOB 这两个概念，并对其有了一定认识。可仔细一想，index 中只是记录了上一次 update-cache 的状态，通过 index，只能找到 Object Database 中最近一个“快照”，无法找到历史 update-cache 产生的 object，而且，在 Object Database 中的 BLOB 是没有层级的。如果仅是这样，Git 还不是一个合格的「content tracker」。回想一下上文提到的 TREE，接下来应该有它的用武之地。</p>
+</blockquote>
+<h3 id="3-cat-file">3. cat-file</h3>
+<p>这里先介绍一个能查看 object 的工具 <code>cat-file</code>，它读取 object 的文件名，将文件内容以可读的形式写入一个临时文件，通过查看这个临时文件，就能知道 object 文件内容。</p>
+<h3 id="4-show-diff">4. show-diff</h3>
+<ol>
+<li>读取 index 文件中的 <code>cache_entry</code>，index 中记录着上一次 Git 追踪的文件元数据。通过 index 中 <code>cache_entry.name</code> 找到文件最新的元数据，对比是否有变化：
+<ol>
+<li>如果没有变化，则检查下一个文件</li>
+<li>如果有变化，通过 <code>cache_entry.sha1</code> 找到相应的 object ，通过 diff 命令对比 object 与最新文件的内容</li>
+</ol>
+</li>
+</ol>
+<h3 id="5-write-tree">5. write-tree</h3>
+<pre tabindex="0"><code>root@master:~/Github/test_git# ../git/write-tree 
+5c58d749d3c05cd4088561011226cee78ca0221c
+root@master:~/Github/test_git# tree .dircache/
+.dircache/
+├── index
+└── objects
+    ├── 00
+    ├── 01
+		...
+    ├── 2f
+    │   └── 942698bb0133aa13b46a1001ec7a718dbc32b8
+    ├── 30
+		...
+    ├── 3a
+    │   └── c6ffce6b04e98c992a7dde76a5b7fab88be34f
+    ├── 3b
+		...
+    ├── 5c
+    │   └── 58d749d3c05cd4088561011226cee78ca0221c
+    ├── 5d
+		...
+    └── ff
+</code></pre><p>执行  <code>write-tree</code> 后，Object Database 中新增了一个 object 文件，我们通过 <code>cat-file</code> 对比一下 3 个 object 文件内容：</p>
+<pre tabindex="0"><code>root@master:~/Github/test_git# ../git/cat-file 2f942698bb0133aa13b46a1001ec7a718dbc32b8
+temp_git_file_kEdIpF: blob
+root@master:~/Github/test_git# ../git/cat-file 3ac6ffce6b04e98c992a7dde76a5b7fab88be34f
+temp_git_file_uzqTV2: blob
+root@master:~/Github/test_git# ../git/cat-file 5c58d749d3c05cd4088561011226cee78ca0221c
+temp_git_file_mk4x5I: tree
+root@master:~/Github/test_git# ll
+total 32
+drwxr-xr-x 3 root root 4096 Nov 29 05:14 ./
+drwxr-xr-x 4 root root 4096 Nov 29 05:01 ../
+drwx------ 3 root root 4096 Nov 29 05:07 .dircache/
+-rw-r--r-- 1 root root   10 Nov 29 05:02 students
+-rw-r--r-- 1 root root    9 Nov 29 05:02 teachers
+-rw------- 1 root root    9 Nov 29 05:14 temp_git_file_kEdIpF
+-rw------- 1 root root   72 Nov 29 05:14 temp_git_file_mk4x5I
+-rw------- 1 root root   10 Nov 29 05:14 temp_git_file_uzqTV2
+root@master:~/Github/test_git# cat temp_git_file_kEdIpF
+Mr. Wang
+root@master:~/Github/test_git# cat temp_git_file_uzqTV2
+Zhang San
+root@master:~/Github/test_git# cat temp_git_file_mk4x5I
+100644 students:???k錙*}?v??????O100644 teachers/?&amp;??3??j?zq??2?
+</code></pre><p>可见，新增的 object 正是一个 TREE，它的文件内容包含了两个跟踪文件的一些信息。下面是 <code>write-tree.c</code> ：</p>
+<pre tabindex="0"><code>int main(int argc, char **argv)
+{
+	...
+	int i, entries = read_cache();
+	...
+	for (i = 0; i &lt; entries; i++) {
+    ...
+		offset += sprintf(buffer + offset, &quot;%o %s&quot;, ce-&gt;st_mode, ce-&gt;name);
+		...
+		memcpy(buffer + offset, ce-&gt;sha1, 20);
+    ...
+	}
+	...
+	memcpy(buffer+i, &quot;tree &quot;, 5);
+  ...
+	write_sha1_file(buffer, offset);
+	return 0;
+}
+
+</code></pre><p>write-tree 读取 index，将 students 和 teachers 两个文件的文件模式、文件名、<code>cache_entry.sha1</code> 写入 TREE。通过写入一个 TREE，在 Object Database 中建立起了层级关系：</p>
+<pre tabindex="0"><code>           +-------+
+           | 5c58d |
+           ++----+-+
+            |    |
+    v-------+    +-------v
++-------+            +-------+
+| 3ac6f |            | 2f942 |
++-------+            +-------+
+</code></pre><h3 id="6-read-tree">6. read-tree</h3>
+<p>read-tree 读取一个 TREE，打印 TREE 的内容（比 cat-file 的输出更具有可读性）：</p>
+<pre tabindex="0"><code>root@master:~/Github/test_git# ../git/read-tree 5c58d749d3c05cd4088561011226cee78ca0221c
+100644 students (3ac6ffce6b04e98c992a7dde76a5b7fab88be34f)
+100644 teachers (2f942698bb0133aa13b46a1001ec7a718dbc32b8)
+</code></pre><h3 id="7-commit-tree">7. commit-tree</h3>
+<p>先看看这个命令怎么用：</p>
+<pre tabindex="0"><code>root@master:~/Github/test_git# echo &quot;track teachers and students&quot; &gt; change.log
+root@master:~/Github/test_git# ../git/commit-tree 5c58d749d3c05cd4088561011226cee78ca0221c &lt; change.log 
+Committing initial tree 5c58d749d3c05cd4088561011226cee78ca0221c
+a25b317275e2bc71863d2074c70eeb4137d8bb90
+root@master:~/Github/test_git# ../git/cat-file a25b317275e2bc71863d2074c70eeb4137d8bb90
+temp_git_file_TPjazX: commit
+root@master:~/Github/test_git# cat temp_git_file_TPjazX 
+tree 5c58d749d3c05cd4088561011226cee78ca0221c
+author root &lt;root@master&gt; Sun Nov 29 06:19:51 2020
+committer root &lt;root@master&gt; Sun Nov 29 06:19:51 2020
+
+track teachers and students
+root@master:~/Github/test_git# tree .dircache/ -a
+.dircache/
+├── index
+└── objects
+    ├── 00
+    ├── 01
+		...
+    ├── 2f
+    │   └── 942698bb0133aa13b46a1001ec7a718dbc32b8 # BLOB
+    ├── 30
+		...
+    ├── 3a
+    │   └── c6ffce6b04e98c992a7dde76a5b7fab88be34f # BLOB
+    ├── 3b
+		...
+    ├── 5c
+    │   └── 58d749d3c05cd4088561011226cee78ca0221c # TREE
+    ├── 5d
+		...
+    ├── a2
+    │   └── 5b317275e2bc71863d2074c70eeb4137d8bb90 # COMMIT
+    ├── a3
+		...
+    └── ff
+</code></pre><p>使用 commit-tree，提交前面生成的 TREE 对象，生成了一个新的 object -&gt; COMMIT。这时 Object Database 中的层级关系如下：</p>
+<pre tabindex="0"><code>           +-------+
+           | a25b1 |commit
+           +-------+
+               |
+               v
+           +-------+
+           | 5c58d |tree
+           ++----+-+
+            |    |
+    v-------+    +-------v
++-------+            +-------+
+| 3ac6f |blob        | 2f942 |blob
++-------+            +-------+
+</code></pre><h2 id="三变更版本库">三、变更版本库</h2>
+<p>现在我们已经完成了对 students 和 teachers 文件的原始追踪。现在，需要向 students 名单内新增一名学生，下面使用前面学习的命令来跟踪名单的变化：</p>
+<pre tabindex="0"><code>root@master:~/Github/test_git# echo &quot;Li Si&quot; &gt;&gt; students 
+root@master:~/Github/test_git# cat students 
+Zhang San
+Li Si
+root@master:~/Github/test_git# ../git/update-cache students 
+root@master:~/Github/test_git# tree .dircache/ -a
+.dircache/
+├── index
+└── objects
+    ├── 00
+    ├── 01
+		...
+    ├── 2f
+    │   └── 942698bb0133aa13b46a1001ec7a718dbc32b8
+    ├── 30
+		...
+    ├── 34
+    │   └── abcd2a605895826c8aee6a845ce630ffc7e4a9 # 新增 blob
+    ├── 35
+		...
+    ├── 3a
+    │   └── c6ffce6b04e98c992a7dde76a5b7fab88be34f
+    ├── 3b
+		...
+    ├── 5c
+    │   └── 58d749d3c05cd4088561011226cee78ca0221c
+    ├── 5d
+		...
+    ├── a2
+    │   └── 5b317275e2bc71863d2074c70eeb4137d8bb90
+    ├── a3
+		...
+    └── ff
+</code></pre><p>看一下新增的 BLOB 中是什么内容：</p>
+<pre tabindex="0"><code>root@master:~/Github/test_git# ../git/cat-file 34abcd2a605895826c8aee6a845ce630ffc7e4a9
+temp_git_file_MpII34: blob
+root@master:~/Github/test_git# cat temp_git_file_MpII34 
+Zhang San
+Li Si
+</code></pre><p>新增的 BLOB 中是 students 名单的最新内容。下面将这个 BLOB 加入版本库层级：</p>
+<pre tabindex="0"><code>root@master:~/Github/test_git# ../git/write-tree 
+e6cba6befd8de134a2b65970f4cc37a123fa3f54
+root@master:~/Github/test_git# ../git/commit-tree e6cba6befd8de134a2b65970f4cc37a123fa3f54 -p a25b317275e2bc71863d2074c70eeb4137d8bb90 &lt; change.log 
+f68cca59ffa6ecd5e04b33accf86cd9931ef848f
+root@master:~/Github/test_git# cat f68cca59ffa6ecd5e04b33accf86cd9931ef848f
+cat: f68cca59ffa6ecd5e04b33accf86cd9931ef848f: No such file or directory
+root@master:~/Github/test_git# ../git/cat-file f68cca59ffa6ecd5e04b33accf86cd9931ef848f
+temp_git_file_5JBumK: commit
+root@master:~/Github/test_git# cat temp_git_file_5JBumK
+tree e6cba6befd8de134a2b65970f4cc37a123fa3f54
+parent a25b317275e2bc71863d2074c70eeb4137d8bb90
+author root &lt;root@master&gt; Sun Nov 29 07:03:39 2020
+committer root &lt;root@master&gt; Sun Nov 29 07:03:39 2020
+
+add student Li Si
+</code></pre><p>在 commit-tree 时，指定父 commit 为前一个 commit，这样我们就将这次修改的内容与修改前的内容联系了起来，下面是此时版本库中的层级关系：</p>
+<pre tabindex="0"><code>           +-------+           +-------+
+           | a25b1 |commit --&gt; | fbf46 |commit
+           +---+---+           +---+---+
+               |                   |
+               v                   v
+           +---+---+           +---+---+
+           | 5c58d |tree       | e6cba |tree
+           ++----+-+           +-+---+-+
+            |    |               |   |
+    v-------+    +-------v v-----+   +----v
++-------+            +-------+         +-------+
+| 3ac6f |blob        | 2f942 |blob     | 34abc |blob
++-------+            +-------+         +-------+
+</code></pre><h2 id="四总结">四、总结</h2>
+<p>可以看出，最初版本的 Git 有 3 个最核心的命令：</p>
+<ol>
+<li>通过 update-cache，为修改的文件生成一个副本 BLOB</li>
+<li>通过 write-tree，将当前整个版本库的状态记录到 TREE</li>
+<li>通过 commit-tree，记录不同状态间的时序关系</li>
+</ol>
+<p>通过这 3 个命令，能完成基本的 content track 的功能。虽然最新版本的 Git 已经新增了很多其它的功能，但是其设计思想没有发生太大的变化，掌握了这些基础的概念，在以后的 Git 学习中会更加游刃有余。</p>
+
+        </div>
+      </div>
+    </div>
+    <div class="footer">
+  
+  <p>Powered by <a href="https://gohugo.io">Hugo</a>. This theme—Slim—is open sourced on <a href="https://github.com/zhe/hugo-theme-slim">Github</a>.</p>
+  
+</div>
+
+  </div>
+  <script src="https://drivebyer.github.iojs/slim.js"></script>
+  
+
+</body>
+
+</html>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Posts on Thinking Cell</title>
+    <link>https://drivebyer.github.io/posts/</link>
+    <description>Recent content in Posts on Thinking Cell</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>zh-CN</language>
+    <lastBuildDate>Tue, 09 Feb 2021 20:28:20 +0800</lastBuildDate><atom:link href="https://drivebyer.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Git源码解读</title>
+      <link>https://drivebyer.github.io/posts/git%E6%BA%90%E7%A0%81%E8%A7%A3%E8%AF%BB/</link>
+      <pubDate>Tue, 09 Feb 2021 20:28:20 +0800</pubDate>
+      
+      <guid>https://drivebyer.github.io/posts/git%E6%BA%90%E7%A0%81%E8%A7%A3%E8%AF%BB/</guid>
+      <description>TIPS：本文对 Git 的介绍基于 Git(commit e83c5163316f89bfbde7d9ab23ca2e25604af290)，这是 Git 的第一次提交。
+ 一、结构初探 从 Github 上克隆 Git 源代码，将版本切换到第一个 commit，目录结构如下：
+├── Makefile ├── README ├── cache.h ├── cat-file.c ├── commit-tree.c ├── init-db.c ├── read-cache.c ├── read-tree.c ├── show-diff.c ├── update-cache.c ├── write-tree.c 目录结构十分简单，先看看 README 文件的内容，了解一下 Linus 最初是怎么介绍 Git 的。
+Git 的设计中有两类抽象：object database 和 current directory cache。
+1. The Object Database object database 是一系列 object 的集合。在这个集合中，object 间可以互相引用，它们之间形成一种层级关系。
+在 Git 中不会直接操作一个原生的 object，而是操作处理后的 object，一个 object 会经过如下处理：
++------+ zlib +------+ SHA1 +------+ |object| +--------&amp;gt; | .</description>
+    </item>
+    
+    <item>
+      <title>博客迁移</title>
+      <link>https://drivebyer.github.io/posts/%E5%8D%9A%E5%AE%A2%E8%BF%81%E7%A7%BB/</link>
+      <pubDate>Tue, 09 Feb 2021 20:18:23 +0800</pubDate>
+      
+      <guid>https://drivebyer.github.io/posts/%E5%8D%9A%E5%AE%A2%E8%BF%81%E7%A7%BB/</guid>
+      <description>下面是旧博客中的文章分类占比：
+ OS（60%） Go（25%） 其它（15%）  如有兴趣，请一步至 Github 站点，点击查看。</description>
+    </item>
+    
+  </channel>
+</rss>
