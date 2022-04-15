@@ -5,7 +5,32 @@
     <link>https://drivebyer.github.io/</link>
     <description>Recent content on Thinking Cell</description>
     <generator>Hugo -- gohugo.io</generator>
-    <lastBuildDate>Tue, 09 Feb 2021 20:28:20 +0800</lastBuildDate><atom:link href="https://drivebyer.github.io/index.xml" rel="self" type="application/rss+xml" />
+    <language>en</language>
+    <lastBuildDate>Tue, 12 Apr 2022 21:11:04 +0800</lastBuildDate><atom:link href="https://drivebyer.github.io/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>VLAN与VXLAN</title>
+      <link>https://drivebyer.github.io/posts/vlan%E4%B8%8Evxlan/</link>
+      <pubDate>Tue, 12 Apr 2022 21:11:04 +0800</pubDate>
+      
+      <guid>https://drivebyer.github.io/posts/vlan%E4%B8%8Evxlan/</guid>
+      <description>VLAN 与 VXLAN K8s 网络比较核心的技术是「跨主机通信」。跨主机通信有很多解决方案，比较有名的是 flannel。
+本篇文章简单介绍一些 VXLAN 技术。
+VXLAN 是对 VLAN 的扩展，想要理解 VXLAN，得先弄懂 VLAN 是个什么东西。
+VLAN 背景 假设有如下网络拓扑：
+图中所示的 4 台主机在同一个广播域中，虽然交换机具有一定的学习能力（MAC 到 Ports 的映射），但是当主机数量很多时，还是会存在广播风暴问题。
+当部门之间信息需要保密时，这个拓扑还会存在安全问题。
+隔离 怎么解决上面的两个问题？
+一个很自然的想法就是使用路由器将部门 A 与部门 B 隔离成两个广播域：
+这种方式被称为物理隔离。物理隔离虽然能解决问题，但是又引入了配置不灵活、浪费交换机端口的问题。
+除了物理隔离，还有一种隔离方式称为逻辑隔离。VLAN 就是一种逻辑隔离技术：
+通过使用支持 VLAN 的交换机，实现了隔离。这种隔离没有引入额外的设备，并且对于 VLAN 的划分是可配置的。
+对于一个公司来说，员工有限，使用 VLAN 隔离能满足大部分场景。对于有大量租户需求的云厂商来说，VLAN 已经无法满足需求。原因是什么呢？
+下图是传统二层报文与支持 VLAN 的二层报文的格式对比：
+可以看到，VLAN 报文相比与传统报文多了 4 字节。这 4 字节中有 12bit 用作 VLAN 划分。也就是说，云厂商如果使用 VLAN 技术来划分租户，最多支持 4094（2^12-2） 个租户。对于大型云厂商来说，这是远远不够的。
+为了弥补上述 VLAN 的不足，RFC 定义了 VXLAN。
+VXLAN VXLAN 每个 VLAN 都有一个 VLAN ID。VLAN ID 被添加到 frame 上，以保持 frame 的唯一性。</description>
+    </item>
+    
     <item>
       <title>Git源码解读</title>
       <link>https://drivebyer.github.io/posts/git%E6%BA%90%E7%A0%81%E8%A7%A3%E8%AF%BB/</link>
