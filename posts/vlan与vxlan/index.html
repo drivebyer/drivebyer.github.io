@@ -54,9 +54,9 @@
       
       
       
-        4 min
+        5 min
       
-      15 s
+      0 s
       &nbsp;
     
     
@@ -67,6 +67,9 @@
 
   <div class="post-text">
     <h1 id="vlan-与-vxlan">VLAN 与 VxLAN</h1>
+<blockquote>
+<p>All problems in computer science can be solved by another level of indirection.</p>
+</blockquote>
 <p>本篇文章简单介绍 VxLAN 技术。VxLAN 是对 VLAN 的扩展，想要理解 VxLAN，得先弄懂 VLAN。</p>
 <h2 id="vlan">VLAN</h2>
 <h3 id="背景">背景</h3>
@@ -98,14 +101,19 @@
 </ul>
 <p>与 VLAN 一样，每个 VxLAN 段都有一个 ID，称为 VNI（VxLAN network identifier），VNI 支持大约有 2^24 个 VxLAN 段。每一个 VNI 将 Overlay 网络分割成一个个独立的逻辑网络，称为 Bridge Domain：</p>
 <p><img src="http://assets.processon.com/chart_image/625aa43f1efad44ca6a01c3f.png" alt="VxLAN平铺结构"></p>
-<h3 id="spine-leaf-架构">spine-leaf 架构</h3>
-<p>传统网络架构通常是 3 层：core -&gt; distribution -&gt; access，这种网络架构适用于<strong>南北向流量</strong>较多的场景。在云计算盛行的今天，需要更多的关注<strong>东西向流量</strong>，于是，引入了 spine-leaf 架构。spine-leaf 架构结合 VxLAN 后如下：</p>
+<h3 id="spine-leaf-架构">Spine-Leaf 架构</h3>
+<p>传统网络架构通常是 3 层：core -&gt; distribution -&gt; access，这种网络架构适用于<strong>南北向流量</strong>较多的场景。在云计算盛行的今天，需要更多的关注<strong>东西向流量</strong>，于是引入了 spine-leaf 架构。spine-leaf 架构结合 VxLAN 后效果如下：</p>
 <p><img src="http://assets.processon.com/chart_image/625aaa110791294ada5f60a8.png" alt="spine-leaf"></p>
 <h2 id="总结">总结</h2>
+<p>本文简单介绍了 VxLAN 技术，从 VLAN 到 VxLAN 的发展脉络可以看出，计算机科学里从来没有百分百完美的设计。随着技术的发展，不断出现的新需求一直在推进技术的进步。</p>
+<p>另外，让我们回头看一看 VxLAN 解决问题的方式（追加报文），似乎也呼应着文章开头引用的那句经典语录：<strong>All problems in computer science can be solved by another level of indirection</strong>.</p>
 <h2 id="参考资料">参考资料</h2>
 <p>[1] <a href="https://info.support.huawei.com/info-finder/encyclopedia/zh/VLAN.html">https://info.support.huawei.com/info-finder/encyclopedia/zh/VLAN.html</a></p>
 <p>[2] <a href="https://www.youtube.com/watch?v=jC6MJTh9fRE">https://www.youtube.com/watch?v=jC6MJTh9fRE</a></p>
 <p>[3] <a href="https://datatracker.ietf.org/doc/html/rfc7348">https://datatracker.ietf.org/doc/html/rfc7348</a></p>
+<blockquote>
+<p>Latest update：2022/04/16</p>
+</blockquote>
 
   </div>
 
