@@ -6,7 +6,19 @@
     <description>Recent content in Posts on Thinking Cell</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
-    <lastBuildDate>Tue, 12 Apr 2022 21:11:04 +0800</lastBuildDate><atom:link href="https://drivebyer.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sun, 24 Apr 2022 19:46:09 +0800</lastBuildDate><atom:link href="https://drivebyer.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Istio自动注入Sidecar实现原理</title>
+      <link>https://drivebyer.github.io/posts/istio%E8%87%AA%E5%8A%A8%E6%B3%A8%E5%85%A5sidecar%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/</link>
+      <pubDate>Sun, 24 Apr 2022 19:46:09 +0800</pubDate>
+      
+      <guid>https://drivebyer.github.io/posts/istio%E8%87%AA%E5%8A%A8%E6%B3%A8%E5%85%A5sidecar%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/</guid>
+      <description>Istio自动注入Sidecar实现原理  The single-responsibility principle (SRP) is a computer-programming principle that states that every module, class or function in a computer program should have responsibility over a single part of that program&amp;rsquo;s functionality, and it should encapsulate that part.
+ 介绍 Istio 自动注入 Sidecar 指的是 Istio 会为用户在特定条件下（通常是在某个命名空间）创建的 Pod 添加一个 Proxy Sidecar。
+Istio 架构上分为控制平面与数据平面。如下图所示，在数据平面， Istio 通过自动注入为每个 Pod 都添加了一个 Porxy：
+为什么需要自动注入 按照常规的做法，要给 Pod 添加 Sidecar，需要在应用 Pod 的 YAML 文件的相应位置填写 Sidecar 的信息。Istio 可以使用这种方法吗？应该是可以的。但是这种方法似乎不那么优雅。</description>
+    </item>
+    
     <item>
       <title>VLAN与VxLAN</title>
       <link>https://drivebyer.github.io/posts/vlan%E4%B8%8Evxlan/</link>

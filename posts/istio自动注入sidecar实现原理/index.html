@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="generator" content="Hugo 0.91.2" />
+  <title> Istio自动注入Sidecar实现原理 | Thinking Cell </title>
+  <link rel="stylesheet" href="https://drivebyer.github.io/css/simpleness.css">
+  <link rel="canonical" href="https://drivebyer.github.io/posts/istio%E8%87%AA%E5%8A%A8%E6%B3%A8%E5%85%A5sidecar%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/">
+  <link rel="alternate" type="application/rss+xml" href="" title="Thinking Cell">
+  
+  
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/css/all.min.css" rel="stylesheet">
+  
+</head>
+<body class="container">
+  <nav class="navigation">
+  <div class="nav-left">
+    
+    <div class="nav-item nav-title">
+      <a href="https://drivebyer.github.io/"> Thinking Cell</a>
+    </div>
+    <div class="nav-item nav-menu">
+      
+      <a href="/"> Home</a>
+      
+    </div>
+  </div>
+  <div class="nav-item nav-right fontawesome">
+    
+    
+    <a href="https://github.com/drivebyer" target="_blank">
+      <i title="GitHub" class="fab fa-github"></i>
+    </a>
+    
+    
+  </div>
+</nav>
+
+  
+<article class="post">
+  <header class="post-header">
+    <h1 style="text-align: center;" >Istio自动注入Sidecar实现原理</h1>
+    <div class="post-metadata">
+    
+      <time datetime="2022-04-24T19:46:09&#43;08:00">April 24, 2022</time> &nbsp; 
+    
+    
+    
+    
+    
+      <i class="far fa-clock"></i>
+      
+      
+      
+      
+        2 min
+      
+      51 s
+      &nbsp;
+    
+    
+    </div>
+  </header>
+
+  
+
+  <div class="post-text">
+    <h1 id="istio自动注入sidecar实现原理">Istio自动注入Sidecar实现原理</h1>
+<blockquote>
+<p>The single-responsibility principle (SRP) is a computer-programming principle that states that every module, class or function in a computer program should have responsibility over a single part of that program&rsquo;s functionality, and it should encapsulate that part.</p>
+</blockquote>
+<h2 id="介绍">介绍</h2>
+<p><strong>Istio 自动注入 Sidecar</strong> 指的是 Istio 会为用户在特定条件下（通常是在某个命名空间）创建的 Pod 添加一个 Proxy Sidecar。</p>
+<p>Istio 架构上分为控制平面与数据平面。如下图所示，在数据平面， Istio 通过自动注入为每个 Pod 都添加了一个 Porxy：</p>
+<p><img src="http://assets.processon.com/chart_image/62653e4707912970cb1fa1fd.png" alt="Isio架构"></p>
+<h2 id="为什么需要自动注入">为什么需要自动注入</h2>
+<p>按照常规的做法，要给 Pod 添加 Sidecar，需要在应用 Pod 的 YAML 文件的相应位置填写 Sidecar 的信息。Istio 可以使用这种方法吗？应该是可以的。但是这种方法似乎不那么优雅。</p>
+<p>应用的开发者应该只关注业务逻辑，不需要关心系统中是否使用 Istio。<strong>自动注入做到了让 Istio 的运行对于应用透明（transparently）</strong>。</p>
+<h2 id="原理">原理</h2>
+<p>Istio 使用了 K8s 中的 <a href="https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#mutatingadmissionwebhook">MutatingAdmissionWebhook</a> 来实现自动注入 Sidecar，下面是自动注入 Sidecar 流程时序图：</p>
+<p><img src="http://assets.processon.com/chart_image/626692d5f346fb516ee40f75.png" alt="webhook原理"></p>
+<p>从图中可以清晰的看到整个流程中各个组件之间的调用关系。其中，重点是 Istiod，也就是 Webhook Server。</p>
+<p>Istiod 在 <code>:15017/inject</code> 处理 webhook 请求，对应的处理函数为 <code>func (wh *Webhook) serveInject(w http.ResponseWriter, r *http.Request)</code>。大致流程是：</p>
+<ol>
+<li>从 w 中读取 Pod 信息</li>
+<li>执行注入 Sidecar 的逻辑（istio/pkg/kube/inject/webhook.go:func injectPod）</li>
+<li>将修改后的 Pod 信息写入 r</li>
+</ol>
+<p>上面介绍了 Istiod 如何接受请求并处理，那 K8s 怎么知道将请求发送到哪个地方呢？</p>
+<p>TODO</p>
+<h2 id="总结">总结</h2>
+<p>本篇文章简要介绍了 Istio 中自动注入 Sidecar 的实现原理。这得益于 K8s 提供了强大的 Webhook 功能。</p>
+<h2 id="参考资料">参考资料</h2>
+<p>[1] <a href="https://istio.io/latest/docs/ops/configuration/mesh/injection-concepts/">https://istio.io/latest/docs/ops/configuration/mesh/injection-concepts/</a></p>
+<p>[2] <a href="https://istio.io/latest/docs/setup/additional-setup/sidecar-injection/#automatic-sidecar-injection">https://istio.io/latest/docs/setup/additional-setup/sidecar-injection/#automatic-sidecar-injection</a></p>
+<p>[3] <a href="https://istio.io/latest/docs/ops/common-problems/injection/">https://istio.io/latest/docs/ops/common-problems/injection/</a></p>
+<p>[4] <a href="https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#experimenting-with-admission-webhooks">https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#experimenting-with-admission-webhooks</a></p>
+<blockquote>
+<p>Latest update：2022/04/24</p>
+</blockquote>
+
+  </div>
+
+  <footer class="post-footer">
+    
+
+    
+
+    
+    
+  </footer>
+  
+  <div class="comments">
+  <div class="comments">
+
+
+
+</div>
+  </div>
+</article>
+
+  <div class="foot">
+  
+  &copy; 2019 - 2022 &#183;
+  <a href="/"> Thinking Cell </a> &#183;
+  Theme <a href="https://github.com/RainerChiang/simpleness">Simpleness</a> Powered by <a href="https://gohugo.io/">Hugo</a> &#183;
+  <a href="#"><i class="fas fa-chevron-up"></i></a>
+</div>
+</body>
+  
+
+
+
+</html>
