@@ -54,9 +54,9 @@
       
       
       
-        2 min
+        3 min
       
-      51 s
+      14 s
       &nbsp;
     
     
@@ -78,7 +78,7 @@
 <p>按照常规的做法，要给 Pod 添加 Sidecar，需要在应用 Pod 的 YAML 文件的相应位置填写 Sidecar 的信息。Istio 可以使用这种方法吗？应该是可以的。但是这种方法似乎不那么优雅。</p>
 <p>应用的开发者应该只关注业务逻辑，不需要关心系统中是否使用 Istio。<strong>自动注入做到了让 Istio 的运行对于应用透明（transparently）</strong>。</p>
 <h2 id="原理">原理</h2>
-<p>Istio 使用了 K8s 中的 <a href="https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#mutatingadmissionwebhook">MutatingAdmissionWebhook</a> 来实现自动注入 Sidecar，下面是自动注入 Sidecar 流程时序图：</p>
+<p>Istio 使用了 K8s 中 Webhook 功能的来实现自动注入 Sidecar，下面是自动注入 Sidecar 流程时序图：</p>
 <p><img src="http://assets.processon.com/chart_image/626692d5f346fb516ee40f75.png" alt="webhook原理"></p>
 <p>从图中可以清晰的看到整个流程中各个组件之间的调用关系。其中，重点是 Istiod，也就是 Webhook Server。</p>
 <p>Istiod 在 <code>:15017/inject</code> 处理 webhook 请求，对应的处理函数为 <code>func (wh *Webhook) serveInject(w http.ResponseWriter, r *http.Request)</code>。大致流程是：</p>
@@ -87,17 +87,16 @@
 <li>执行注入 Sidecar 的逻辑（istio/pkg/kube/inject/webhook.go:func injectPod）</li>
 <li>将修改后的 Pod 信息写入 r</li>
 </ol>
-<p>上面介绍了 Istiod 如何接受请求并处理，那 K8s 怎么知道将请求发送到哪个地方呢？</p>
-<p>TODO</p>
+<p>上面介绍了 Istiod 如何接受请求并处理，那 K8s 怎么知道将请求发送到哪个地方呢？答案是使用 K8s 中的 API 资源： <a href="https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/#mutatingadmissionwebhook">MutatingAdmissionWebhook</a> 。该资源通过 <code>istioctl manifest install</code> 命令注册到 K8s 集群。</p>
 <h2 id="总结">总结</h2>
-<p>本篇文章简要介绍了 Istio 中自动注入 Sidecar 的实现原理。这得益于 K8s 提供了强大的 Webhook 功能。</p>
+<p>得益于 K8s 强大的 Webhook 功能，Istio 实现了用户无感的自动注入 Sidecar 功能。从中也能学习到，在关键的位置支持 hook 将大大的提升架构的灵活性，也体现了**<a href="https://en.wikipedia.org/wiki/Open%E2%80%93closed_principle">开闭原则</a>（The Open/Closed Principle, OCP）**的重要性。</p>
 <h2 id="参考资料">参考资料</h2>
 <p>[1] <a href="https://istio.io/latest/docs/ops/configuration/mesh/injection-concepts/">https://istio.io/latest/docs/ops/configuration/mesh/injection-concepts/</a></p>
 <p>[2] <a href="https://istio.io/latest/docs/setup/additional-setup/sidecar-injection/#automatic-sidecar-injection">https://istio.io/latest/docs/setup/additional-setup/sidecar-injection/#automatic-sidecar-injection</a></p>
 <p>[3] <a href="https://istio.io/latest/docs/ops/common-problems/injection/">https://istio.io/latest/docs/ops/common-problems/injection/</a></p>
 <p>[4] <a href="https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#experimenting-with-admission-webhooks">https://kubernetes.io/docs/reference/access-authn-authz/extensible-admission-controllers/#experimenting-with-admission-webhooks</a></p>
 <blockquote>
-<p>Latest update：2022/04/24</p>
+<p>Latest update：2022/04/26</p>
 </blockquote>
 
   </div>
