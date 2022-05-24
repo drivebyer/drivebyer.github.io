@@ -53,13 +53,12 @@ Git 的设计中有两类抽象：object database 和 current directory cache。
     </item>
     
     <item>
-      <title>博客迁移</title>
-      <link>https://drivebyer.github.io/posts/%E5%8D%9A%E5%AE%A2%E8%BF%81%E7%A7%BB/</link>
+      <title>历史博文</title>
+      <link>https://drivebyer.github.io/posts/%E5%8E%86%E5%8F%B2%E5%8D%9A%E6%96%87/</link>
       <pubDate>Tue, 09 Feb 2021 20:18:23 +0800</pubDate>
       
-      <guid>https://drivebyer.github.io/posts/%E5%8D%9A%E5%AE%A2%E8%BF%81%E7%A7%BB/</guid>
-      <description>下面是旧博客中的文章分类占比：
- OS（60%） Go（25%） 其它（15%）  如有兴趣，请一步至 Github 站点，点击查看。</description>
+      <guid>https://drivebyer.github.io/posts/%E5%8E%86%E5%8F%B2%E5%8D%9A%E6%96%87/</guid>
+      <description>点击跳转</description>
     </item>
     
   </channel>
