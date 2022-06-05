@@ -6,17 +6,30 @@
     <description>Recent content in Posts on Thinking Cell</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
-    <lastBuildDate>Sun, 24 Apr 2022 19:46:09 +0800</lastBuildDate><atom:link href="https://drivebyer.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Fri, 03 Jun 2022 22:36:36 +0800</lastBuildDate><atom:link href="https://drivebyer.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>Flannel后端对比</title>
+      <link>https://drivebyer.github.io/posts/flannel-backends-diff/</link>
+      <pubDate>Fri, 03 Jun 2022 22:36:36 +0800</pubDate>
+      
+      <guid>https://drivebyer.github.io/posts/flannel-backends-diff/</guid>
+      <description>All problems in computer science can be solved by another level of indirection.
+ 本文简单对比一下 flannel 中不同后端实现之间的区别，并尝试找到其中的相似点。
+假设数据包流向是：
+ 主机 A（10.168.0.2） -&amp;gt; 主机 B（10.168.0.3） 容器 10.244.0.2 -&amp;gt; 容器 10.244.1.3      UDP VxLAN Host-GW     数据包是否流过 flanneld 是 否 否   正向/反向「代理」 flannel0（flanneld） flannel.1（VTEP） -   数据包如何流向正向代理 （docker0 无法处理）通过宿主机上的路由规则（见注 1）流向 flannel0 设备（TUN） （docker0 无法处理）通过宿主机上的路由规则（见注 2）流向 flannel.1（VTEP） -   正向代理如何知道将数据包发往哪台主机上的反向代理 代理需要「全局视角」。通过用户态的 flanneld 查询 API Server 里的对应关系，得知目标主机的 IP 地址 代理不需要「全局视角」。通过查询存储在本机的 FDB（注 3），得知目标主机的 IP 地址 -   封包结构      是否存在额外的用户态与内核态间数据拷贝 是 否 否   是否需要额外的数据包头 是 是 否   其它 由于代理实现在应用层（指 flanneld），所以外部数据帧如何封装是自己可以控制的 由于代理实现在内核层（指 VTEP 设备），所以外部数据帧如何封装需要 flanneld 的配合（见注 3） 要求主机间二层可达（注 4）    注：</description>
+    </item>
+    
     <item>
       <title>Istio自动注入Sidecar实现原理</title>
       <link>https://drivebyer.github.io/posts/istio%E8%87%AA%E5%8A%A8%E6%B3%A8%E5%85%A5sidecar%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/</link>
       <pubDate>Sun, 24 Apr 2022 19:46:09 +0800</pubDate>
       
       <guid>https://drivebyer.github.io/posts/istio%E8%87%AA%E5%8A%A8%E6%B3%A8%E5%85%A5sidecar%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/</guid>
-      <description>Istio自动注入Sidecar实现原理  The single-responsibility principle (SRP) is a computer-programming principle that states that every module, class or function in a computer program should have responsibility over a single part of that program&amp;rsquo;s functionality, and it should encapsulate that part.
+      <description>The single-responsibility principle (SRP) is a computer-programming principle that states that every module, class or function in a computer program should have responsibility over a single part of that program&amp;rsquo;s functionality, and it should encapsulate that part.
  介绍 Istio 自动注入 Sidecar 指的是 Istio 会为用户在特定条件下（通常是在某个命名空间）创建的 Pod 添加一个 Proxy Sidecar。
 Istio 架构上分为控制平面与数据平面。如下图所示，在数据平面， Istio 通过自动注入为每个 Pod 都添加了一个 Porxy：
-为什么需要自动注入 按照常规的做法，要给 Pod 添加 Sidecar，需要在应用 Pod 的 YAML 文件的相应位置填写 Sidecar 的信息。Istio 可以使用这种方法吗？应该是可以的。但是这种方法似乎不那么优雅。</description>
+为什么需要自动注入 按照常规的做法，要给 Pod 添加 Sidecar，需要在应用 Pod 的 YAML 文件的相应位置填写 Sidecar 的信息。Istio 可以使用这种方法吗？应该是可以的。但是这种方法似乎不那么优雅。
+应用的开发者应该只关注业务逻辑，不需要关心系统中是否使用 Istio。自动注入做到了让 Istio 的运行对于应用透明（transparently）。</description>
     </item>
     
     <item>
@@ -25,7 +38,7 @@ Istio 架构上分为控制平面与数据平面。如下图所示，在数据�
       <pubDate>Tue, 12 Apr 2022 21:11:04 +0800</pubDate>
       
       <guid>https://drivebyer.github.io/posts/vlan%E4%B8%8Evxlan/</guid>
-      <description>VLAN 与 VxLAN  All problems in computer science can be solved by another level of indirection.
+      <description>All problems in computer science can be solved by another level of indirection.
  本篇文章简单介绍 VxLAN 技术。VxLAN 是对 VLAN 的扩展，想要理解 VxLAN，得先弄懂 VLAN。
 VLAN 背景 假设有如下网络拓扑：
 图中所示的 4 台主机在同一个广播域中，虽然交换机具有一定的学习能力（MAC 到 Ports 的映射），但是当主机数量很多时，会存在广播风暴问题。
@@ -34,7 +47,8 @@ VLAN 背景 假设有如下网络拓扑：
 这种方式被称为物理隔离。物理隔离虽然能解决问题，但是又引入了配置不灵活、浪费交换机端口的问题。更简单的一种方式是使用逻辑隔离技术 VLAN：
 通过使用支持 VLAN 的交换机，实现了隔离。这种隔离没有引入额外的设备，并且对于 VLAN 的划分是可配置的。
 对于一个公司来说，员工有限，使用 VLAN 隔离能满足大部分场景。对于有大量租户需求的云厂商来说，VLAN 无法满足需求，原因是什么呢？下图是传统二层报文与支持 VLAN 的二层报文的格式对比：
-可以看到，VLAN 报文相比与传统报文多了 4 字节。这 4 字节中有 12bit 称为 VLAN ID，它被用作划分 VLAN。云厂商如果使用 VLAN 技术来划分租户，最多可以支持 4094（2^12-2） 个租户。</description>
+可以看到，VLAN 报文相比与传统报文多了 4 字节。这 4 字节中有 12bit 称为 VLAN ID，它被用作划分 VLAN。云厂商如果使用 VLAN 技术来划分租户，最多可以支持 4094（2^12-2） 个租户。
+4094 这个数量对于大型云厂商来说，通常是不够的。为了弥补上述 VLAN 的不足，RFC7348 定义了 VxLAN 协议。</description>
     </item>
     
     <item>
@@ -44,7 +58,7 @@ VLAN 背景 假设有如下网络拓扑：
       
       <guid>https://drivebyer.github.io/posts/git%E6%BA%90%E7%A0%81%E8%A7%A3%E8%AF%BB/</guid>
       <description>TIPS：本文对 Git 的介绍基于 Git(commit e83c5163316f89bfbde7d9ab23ca2e25604af290)，这是 Git 的第一次提交。
- 一、结构初探 从 Github 上克隆 Git 源代码，将版本切换到第一个 commit，目录结构如下：
+ 结构初探 从 Github 上克隆 Git 源代码，将版本切换到第一个 commit，目录结构如下：
 ├── Makefile ├── README ├── cache.h ├── cat-file.c ├── commit-tree.c ├── init-db.c ├── read-cache.c ├── read-tree.c ├── show-diff.c ├── update-cache.c ├── write-tree.c 目录结构十分简单，先看看 README 文件的内容，了解一下 Linus 最初是怎么介绍 Git 的。
 Git 的设计中有两类抽象：object database 和 current directory cache。
 1. The Object Database object database 是一系列 object 的集合。在这个集合中，object 间可以互相引用，它们之间形成一种层级关系。

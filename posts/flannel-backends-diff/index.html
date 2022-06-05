@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="generator" content="Hugo 0.91.2" />
+  <title> Flannel后端对比 | Thinking Cell </title>
+  <link rel="stylesheet" href="https://drivebyer.github.io/css/simpleness.css">
+  <link rel="canonical" href="https://drivebyer.github.io/posts/flannel-backends-diff/">
+  <link rel="alternate" type="application/rss+xml" href="" title="Thinking Cell">
+  
+  
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/css/all.min.css" rel="stylesheet">
+  
+</head>
+<body class="container">
+  <nav class="navigation">
+  <div class="nav-left">
+    
+    <div class="nav-item nav-title">
+      <a href="https://drivebyer.github.io/"> Thinking Cell</a>
+    </div>
+    <div class="nav-item nav-menu">
+      
+      <a href="/"> Home</a>
+      
+      <a href="https://github.com/drivebyer/k8s-note"> K8s笔记</a>
+      
+      <a href="https://github.com/drivebyer/istio-note"> Istio笔记</a>
+      
+    </div>
+  </div>
+  <div class="nav-item nav-right fontawesome">
+    
+    
+    <a href="https://github.com/drivebyer" target="_blank">
+      <i title="GitHub" class="fab fa-github"></i>
+    </a>
+    
+    
+  </div>
+</nav>
+
+  
+<article class="post">
+  <header class="post-header">
+    <h1 style="text-align: center;" >Flannel后端对比</h1>
+    <div class="post-metadata">
+    
+      <time datetime="2022-06-03T22:36:36&#43;08:00">June 03, 2022</time> &nbsp; 
+    
+    
+    
+    
+    
+      <i class="far fa-clock"></i>
+      
+      
+      
+      
+        3 min
+      
+      15 s
+      &nbsp;
+    
+    
+    </div>
+  </header>
+
+  
+
+  <div class="post-text">
+    <blockquote>
+<p>All problems in computer science can be solved by another level of indirection.</p>
+</blockquote>
+<p>本文简单对比一下 flannel 中不同后端实现之间的区别，并尝试找到其中的相似点。</p>
+<p>假设数据包流向是：</p>
+<ul>
+<li>主机 A（10.168.0.2） -&gt; 主机 B（10.168.0.3）</li>
+<li>容器 10.244.0.2 -&gt; 容器 10.244.1.3</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>UDP</th>
+<th>VxLAN</th>
+<th>Host-GW</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>数据包是否流过 flanneld</td>
+<td>是</td>
+<td>否</td>
+<td>否</td>
+</tr>
+<tr>
+<td>正向/反向「代理」</td>
+<td>flannel0（flanneld）</td>
+<td>flannel.1（VTEP）</td>
+<td>-</td>
+</tr>
+<tr>
+<td>数据包如何流向正向代理</td>
+<td>（docker0 无法处理）通过宿主机上的路由规则（见注 1）流向 flannel0 设备（TUN）</td>
+<td>（docker0 无法处理）通过宿主机上的路由规则（见注 2）流向 flannel.1（VTEP）</td>
+<td>-</td>
+</tr>
+<tr>
+<td>正向代理如何知道将数据包发往哪台主机上的反向代理</td>
+<td>代理需要「全局视角」。通过用户态的 flanneld 查询 API Server 里的对应关系，得知目标主机的 IP 地址</td>
+<td>代理不需要「全局视角」。通过查询存储在本机的 FDB（注 3），得知目标主机的 IP 地址</td>
+<td>-</td>
+</tr>
+<tr>
+<td>封包结构</td>
+<td><img src="http://assets.processon.com/chart_image/6299caebe0b34d0728fda3d8.png" alt="包结构"></td>
+<td><img src="http://assets.processon.com/chart_image/6299cdb0637689075201534b.png" alt="包结构"></td>
+<td><img src="http://assets.processon.com/chart_image/629cb7eae0b34d7d4b9e3342.png" alt="包结构"></td>
+</tr>
+<tr>
+<td>是否存在额外的用户态与内核态间数据拷贝</td>
+<td>是</td>
+<td>否</td>
+<td>否</td>
+</tr>
+<tr>
+<td>是否需要额外的数据包头</td>
+<td>是</td>
+<td>是</td>
+<td>否</td>
+</tr>
+<tr>
+<td>其它</td>
+<td>由于代理实现在应用层（指 flanneld），所以外部数据帧如何封装是自己可以控制的</td>
+<td>由于代理实现在内核层（指 VTEP 设备），所以外部数据帧如何封装需要 flanneld 的配合（见注 3）</td>
+<td>要求主机间二层可达（注 4）</td>
+</tr>
+</tbody>
+</table>
+<p>注：</p>
+<ol>
+<li>路由规则由主机 A 上的 flanneld 进程添加。</li>
+<li>路由规则由主机 B 上的 flanneld 进程在启动时添加到主机 A 中。也就是说在 VxLAN 模式下，flanneld 进程启动后，会将「如何来到我这里」这个信息通过路由表项的形式写到其它主机。</li>
+<li>FDB 里保存了对应关系：目的 VTEP 的 MAC 地址&lt;-&gt;目的主机的 IP 地址，由 flanneld 维护</li>
+<li>Host-GW 模式下，子网与宿主机 IP 的对应关系直接写入路由表项（10.244.1.0/24 via dev 10.168.0.3 eth0），这里的 10.168.0.3 必须是与自己同子网的主机，否则路由无法添加成功</li>
+</ol>
+<blockquote>
+<p>Latest update：2022/06/03</p>
+</blockquote>
+
+  </div>
+
+  <footer class="post-footer">
+    
+
+    
+
+    
+    
+  </footer>
+  
+  <div class="comments">
+  <div class="comments">
+
+
+
+</div>
+  </div>
+</article>
+
+  <div class="foot">
+  
+  &copy; 2019 - 2022 &#183;
+  <a href="/"> Thinking Cell </a> &#183;
+  Theme <a href="https://github.com/RainerChiang/simpleness">Simpleness</a> Powered by <a href="https://gohugo.io/">Hugo</a> &#183;
+  <a href="#"><i class="fas fa-chevron-up"></i></a>
+</div>
+</body>
+  
+
+
+
+</html>
