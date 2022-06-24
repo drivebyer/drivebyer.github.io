@@ -6,7 +6,20 @@
     <description>Recent content in Posts on Thinking Cell</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en</language>
-    <lastBuildDate>Fri, 03 Jun 2022 22:36:36 +0800</lastBuildDate><atom:link href="https://drivebyer.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Tue, 14 Jun 2022 16:53:50 +0800</lastBuildDate><atom:link href="https://drivebyer.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>CNI规范（译）</title>
+      <link>https://drivebyer.github.io/posts/cni-spec-zh-cn/</link>
+      <pubDate>Tue, 14 Jun 2022 16:53:50 +0800</pubDate>
+      
+      <guid>https://drivebyer.github.io/posts/cni-spec-zh-cn/</guid>
+      <description>本文翻译自 https://github.com/containernetworking/cni/blob/main/SPEC.md，为了更好的在中文的语境下理解原意，本译文可能在某些地方并未原封不动的翻译原文。
+版本 当前规范版本为 1.0.0
+注意，这个规范与 containernetworking/cni 中的代码是独立的。
+下面是已经发布的规范版本：
+tag spec permalink major changes spec-v1.0.0 spec at v1.0.0 Removed non-list configurations; removed version field of interfaces array spec-v0.4.0 spec at v0.4.0 Introduce the CHECK command and passing prevResult on DEL spec-v0.3.1 spec at v0.3.1 none (typo fix only) spec-v0.3.0 spec at v0.3.0 rich result type, plugin chaining spec-v0.2.0 spec at v0.2.0 VERSION command spec-v0.1.0 spec at v0.1.0 initial version 概览 本文档起草了容器网络的通用解决方案，即 CNI（Container Networking Interface）。</description>
+    </item>
+    
     <item>
       <title>Flannel后端对比</title>
       <link>https://drivebyer.github.io/posts/flannel-backends-diff/</link>
@@ -14,9 +27,9 @@
       
       <guid>https://drivebyer.github.io/posts/flannel-backends-diff/</guid>
       <description>All problems in computer science can be solved by another level of indirection.
- 本文简单对比一下 flannel 中不同后端实现之间的区别，并尝试找到其中的相似点。
+本文简单对比一下 flannel 中不同后端实现之间的区别，并尝试找到其中的相似点。
 假设数据包流向是：
- 主机 A（10.168.0.2） -&amp;gt; 主机 B（10.168.0.3） 容器 10.244.0.2 -&amp;gt; 容器 10.244.1.3      UDP VxLAN Host-GW     数据包是否流过 flanneld 是 否 否   正向/反向「代理」 flannel0（flanneld） flannel.1（VTEP） -   数据包如何流向正向代理 （docker0 无法处理）通过宿主机上的路由规则（见注 1）流向 flannel0 设备（TUN） （docker0 无法处理）通过宿主机上的路由规则（见注 2）流向 flannel.1（VTEP） -   正向代理如何知道将数据包发往哪台主机上的反向代理 代理需要「全局视角」。通过用户态的 flanneld 查询 API Server 里的对应关系，得知目标主机的 IP 地址 代理不需要「全局视角」。通过查询存储在本机的 FDB（注 3），得知目标主机的 IP 地址 -   封包结构      是否存在额外的用户态与内核态间数据拷贝 是 否 否   是否需要额外的数据包头 是 是 否   其它 由于代理实现在应用层（指 flanneld），所以外部数据帧如何封装是自己可以控制的 由于代理实现在内核层（指 VTEP 设备），所以外部数据帧如何封装需要 flanneld 的配合（见注 3） 要求主机间二层可达（注 4）    注：</description>
+主机 A（10.168.0.2） -&amp;gt; 主机 B（10.168.0.3） 容器 10.244.0.2 -&amp;gt; 容器 10.244.1.3 UDP VxLAN Host-GW 数据包是否流过 flanneld 是 否 否 正向/反向「代理」 flannel0（flanneld） flannel.1（VTEP） - 数据包如何流向正向代理 （docker0 无法处理）通过宿主机上的路由规则（见注 1）流向 flannel0 设备（TUN） （docker0 无法处理）通过宿主机上的路由规则（见注 2）流向 flannel.1（VTEP） - 正向代理如何知道将数据包发往哪台主机上的反向代理 代理需要「全局视角」。通过用户态的 flanneld 查询 API Server 里的对应关系，得知目标主机的 IP 地址 代理不需要「全局视角」。通过查询存储在本机的 FDB（注 3），得知目标主机的 IP 地址 - 封包结构 是否存在额外的用户态与内核态间数据拷贝 是 否 否 是否需要额外的数据包头 是 是 否 其它 由于代理实现在应用层（指 flanneld），所以外部数据帧如何封装是自己可以控制的 由于代理实现在内核层（指 VTEP 设备），所以外部数据帧如何封装需要 flanneld 的配合（见注 3） 要求主机间二层可达（注 4） 注：</description>
     </item>
     
     <item>
@@ -26,7 +39,7 @@
       
       <guid>https://drivebyer.github.io/posts/istio%E8%87%AA%E5%8A%A8%E6%B3%A8%E5%85%A5sidecar%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/</guid>
       <description>The single-responsibility principle (SRP) is a computer-programming principle that states that every module, class or function in a computer program should have responsibility over a single part of that program&amp;rsquo;s functionality, and it should encapsulate that part.
- 介绍 Istio 自动注入 Sidecar 指的是 Istio 会为用户在特定条件下（通常是在某个命名空间）创建的 Pod 添加一个 Proxy Sidecar。
+介绍 Istio 自动注入 Sidecar 指的是 Istio 会为用户在特定条件下（通常是在某个命名空间）创建的 Pod 添加一个 Proxy Sidecar。
 Istio 架构上分为控制平面与数据平面。如下图所示，在数据平面， Istio 通过自动注入为每个 Pod 都添加了一个 Porxy：
 为什么需要自动注入 按照常规的做法，要给 Pod 添加 Sidecar，需要在应用 Pod 的 YAML 文件的相应位置填写 Sidecar 的信息。Istio 可以使用这种方法吗？应该是可以的。但是这种方法似乎不那么优雅。
 应用的开发者应该只关注业务逻辑，不需要关心系统中是否使用 Istio。自动注入做到了让 Istio 的运行对于应用透明（transparently）。</description>
@@ -39,7 +52,7 @@ Istio 架构上分为控制平面与数据平面。如下图所示，在数据�
       
       <guid>https://drivebyer.github.io/posts/vlan%E4%B8%8Evxlan/</guid>
       <description>All problems in computer science can be solved by another level of indirection.
- 本篇文章简单介绍 VxLAN 技术。VxLAN 是对 VLAN 的扩展，想要理解 VxLAN，得先弄懂 VLAN。
+本篇文章简单介绍 VxLAN 技术。VxLAN 是对 VLAN 的扩展，想要理解 VxLAN，得先弄懂 VLAN。
 VLAN 背景 假设有如下网络拓扑：
 图中所示的 4 台主机在同一个广播域中，虽然交换机具有一定的学习能力（MAC 到 Ports 的映射），但是当主机数量很多时，会存在广播风暴问题。
 当部门之间信息需要保密时，这个拓扑还会存在安全问题。
@@ -58,7 +71,7 @@ VLAN 背景 假设有如下网络拓扑：
       
       <guid>https://drivebyer.github.io/posts/git%E6%BA%90%E7%A0%81%E8%A7%A3%E8%AF%BB/</guid>
       <description>TIPS：本文对 Git 的介绍基于 Git(commit e83c5163316f89bfbde7d9ab23ca2e25604af290)，这是 Git 的第一次提交。
- 结构初探 从 Github 上克隆 Git 源代码，将版本切换到第一个 commit，目录结构如下：
+结构初探 从 Github 上克隆 Git 源代码，将版本切换到第一个 commit，目录结构如下：
 ├── Makefile ├── README ├── cache.h ├── cat-file.c ├── commit-tree.c ├── init-db.c ├── read-cache.c ├── read-tree.c ├── show-diff.c ├── update-cache.c ├── write-tree.c 目录结构十分简单，先看看 README 文件的内容，了解一下 Linus 最初是怎么介绍 Git 的。
 Git 的设计中有两类抽象：object database 和 current directory cache。
 1. The Object Database object database 是一系列 object 的集合。在这个集合中，object 间可以互相引用，它们之间形成一种层级关系。

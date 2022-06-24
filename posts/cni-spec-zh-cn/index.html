@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="generator" content="Hugo 0.100.2" />
+  <title> CNI规范（译） | Thinking Cell </title>
+  <link rel="stylesheet" href="https://drivebyer.github.io/css/simpleness.css">
+  <link rel="canonical" href="https://drivebyer.github.io/posts/cni-spec-zh-cn/">
+  <link rel="alternate" type="application/rss+xml" href="" title="Thinking Cell">
+  
+  
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/css/all.min.css" rel="stylesheet">
+  
+</head>
+<body class="container">
+  <nav class="navigation">
+  <div class="nav-left">
+    
+    <div class="nav-item nav-title">
+      <a href="https://drivebyer.github.io/"> Thinking Cell</a>
+    </div>
+    <div class="nav-item nav-menu">
+      
+      <a href="/"> Home</a>
+      
+      <a href="https://github.com/drivebyer/k8s-note"> K8s笔记</a>
+      
+      <a href="https://github.com/drivebyer/istio-note"> Istio笔记</a>
+      
+    </div>
+  </div>
+  <div class="nav-item nav-right fontawesome">
+    
+    
+    <a href="https://github.com/drivebyer" target="_blank">
+      <i title="GitHub" class="fab fa-github"></i>
+    </a>
+    
+    
+  </div>
+</nav>
+
+  
+<article class="post">
+  <header class="post-header">
+    <h1 style="text-align: center;" >CNI规范（译）</h1>
+    <div class="post-metadata">
+    
+      <time datetime="2022-06-14T16:53:50&#43;08:00">June 14, 2022</time> &nbsp; 
+    
+    
+    
+    
+    
+      <i class="far fa-clock"></i>
+      
+      
+      
+      
+        19 min
+      
+      26 s
+      &nbsp;
+    
+    
+    </div>
+  </header>
+
+  
+  <div class="post-toc">
+    <div class="post-toc-title">Contents</div>
+    <nav id="TableOfContents">
+  <ul>
+    <li><a href="#版本">版本</a></li>
+    <li><a href="#概览">概览</a></li>
+    <li><a href="#总结">总结</a></li>
+    <li><a href="#section-1network-configuration-format">Section 1：Network configuration format</a>
+      <ul>
+        <li><a href="#configuration-format">Configuration format</a></li>
+      </ul>
+    </li>
+    <li><a href="#section-2execution-protocol">Section 2：Execution Protocol</a>
+      <ul>
+        <li><a href="#overview">Overview</a></li>
+        <li><a href="#parameters">Parameters</a></li>
+        <li><a href="#errors">Errors</a></li>
+        <li><a href="#cni-operations">CNI operations</a></li>
+      </ul>
+    </li>
+    <li><a href="#section-3execution-of-network-configurations">Section 3：Execution of Network Configurations</a>
+      <ul>
+        <li><a href="#lifecycle--ordering">Lifecycle &amp; Ordering</a></li>
+        <li><a href="#attachment-parameters">Attachment Parameters</a></li>
+        <li><a href="#adding-an-attachment">Adding an attachment</a></li>
+        <li><a href="#deleting-an-attachment">Deleting an attachment</a></li>
+        <li><a href="#checking-an-attachment">Checking an attachment</a></li>
+        <li><a href="#deriving-execution-configuration-from-plugin-configuration">Deriving <strong>execution configuration</strong> from <strong>plugin configuration</strong></a></li>
+      </ul>
+    </li>
+    <li><a href="#section-4plugin-delegation">Section 4：Plugin Delegation</a></li>
+    <li><a href="#section-5result-types">Section 5：Result Types</a>
+      <ul>
+        <li><a href="#success">Success</a></li>
+        <li><a href="#error">Error</a></li>
+        <li><a href="#version-1">Version</a></li>
+      </ul>
+    </li>
+  </ul>
+</nav>
+  </div>
+  
+
+  <div class="post-text">
+    <blockquote>
+<p>本文翻译自 <a href="https://github.com/containernetworking/cni/blob/main/SPEC.md">https://github.com/containernetworking/cni/blob/main/SPEC.md</a>，为了更好的在中文的语境下理解原意，本译文可能在某些地方并未原封不动的翻译原文。</p>
+</blockquote>
+<h2 id="版本">版本</h2>
+<p>当前规范版本为 1.0.0</p>
+<p>注意，这个规范与 <a href="https://github.com/containernetworking">containernetworking</a>/<strong><a href="https://github.com/containernetworking/cni">cni</a></strong> 中的代码是独立的。</p>
+<p>下面是已经发布的规范版本：</p>
+<table>
+<thead>
+<tr>
+<th>tag</th>
+<th>spec permalink</th>
+<th>major changes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/containernetworking/cni/releases/tag/spec-v1.0.0"><code>spec-v1.0.0</code></a></td>
+<td><a href="https://github.com/containernetworking/cni/blob/spec-v1.0.0/SPEC.md">spec at v1.0.0</a></td>
+<td>Removed non-list configurations; removed <code>version</code> field of <code>interfaces</code> array</td>
+</tr>
+<tr>
+<td><a href="https://github.com/containernetworking/cni/releases/tag/spec-v0.4.0"><code>spec-v0.4.0</code></a></td>
+<td><a href="https://github.com/containernetworking/cni/blob/spec-v0.4.0/SPEC.md">spec at v0.4.0</a></td>
+<td>Introduce the CHECK command and passing prevResult on DEL</td>
+</tr>
+<tr>
+<td><a href="https://github.com/containernetworking/cni/releases/tag/spec-v0.3.1"><code>spec-v0.3.1</code></a></td>
+<td><a href="https://github.com/containernetworking/cni/blob/spec-v0.3.1/SPEC.md">spec at v0.3.1</a></td>
+<td>none (typo fix only)</td>
+</tr>
+<tr>
+<td><a href="https://github.com/containernetworking/cni/releases/tag/spec-v0.3.0"><code>spec-v0.3.0</code></a></td>
+<td><a href="https://github.com/containernetworking/cni/blob/spec-v0.3.0/SPEC.md">spec at v0.3.0</a></td>
+<td>rich result type, plugin chaining</td>
+</tr>
+<tr>
+<td><a href="https://github.com/containernetworking/cni/releases/tag/spec-v0.2.0"><code>spec-v0.2.0</code></a></td>
+<td><a href="https://github.com/containernetworking/cni/blob/spec-v0.2.0/SPEC.md">spec at v0.2.0</a></td>
+<td>VERSION command</td>
+</tr>
+<tr>
+<td><a href="https://github.com/containernetworking/cni/releases/tag/spec-v0.1.0"><code>spec-v0.1.0</code></a></td>
+<td><a href="https://github.com/containernetworking/cni/blob/spec-v0.1.0/SPEC.md">spec at v0.1.0</a></td>
+<td>initial version</td>
+</tr>
+</tbody>
+</table>
+<h2 id="概览">概览</h2>
+<p>本文档起草了容器网络的通用解决方案，即 CNI（Container Networking Interface）。</p>
+<p>为了明确目的，我们定义了以下 3 个术语（译者注：为了表述更准确，直接贴上原文）：</p>
+<ul>
+<li><em><strong>container</strong></em> is a network isolation domain, though the actual isolation technology is not defined by the specification. This could be a <a href="http://man7.org/linux/man-pages/man7/namespaces.7.html">network namespace</a> or a virtual machine, for example.</li>
+<li><em><strong>network</strong></em> refers to a group of endpoints that are uniquely addressable that can communicate amongst each other. This could be either an individual container (as specified above), a machine, or some other network device (e.g. a router). Containers can be conceptually <em>added to</em> or <em>removed from</em> one or more networks.</li>
+<li><em><strong>runtime</strong></em> is the program responsible for executing CNI plugins.</li>
+<li><em><strong>plugin</strong></em> is a program that applies a specified network configuration.</li>
+</ul>
+<p>本文档主要目的是定义 runtimes 与 plugins 之间的接口。文档中的关键字 MUST、MUST NOT、REQUIRED、SHALL、SHALL NOT、SHOULD、SHOULD NOT、RECOMMENDED、MAY 和 OPTIONAL 的定义见 <a href="https://www.ietf.org/rfc/rfc2119.txt">RFC 2119</a>。</p>
+<h2 id="总结">总结</h2>
+<p>CNI 规范定义了如下内容：</p>
+<ol>
+<li>管理员定义网络配置的格式（译者注：通常是配置文件）</li>
+<li>runtime 请求 plugin 的 protocol 格式</li>
+<li>plugin 执行网络配置的流程</li>
+<li>plugin 为其它 plugin 提供的功能</li>
+<li>plugin 返回给 runtime 的类型</li>
+</ol>
+<p><img src="http://assets.processon.com/chart_image/62aef2c61efad41af0432729.png" alt="译者注：为了方便理解上面的定义，整理一张图"></p>
+<h2 id="section-1network-configuration-format">Section 1：Network configuration format</h2>
+<p>CNI 为管理员定义了网络配置的格式。网络配置的消费者有 runtime 与 plugin。在执行 plugin 时，runtime 会将配置转换后，再传给 plugin。</p>
+<p>通常来说，网络配置是静态的。虽然 CNI 规范没有要求网络配置的存储方式，但它通常保存在磁盘中。</p>
+<h3 id="configuration-format">Configuration format</h3>
+<p>一份网络配置包含一个 JSON 对象，对象包含如下字段：</p>
+<ul>
+<li><code>cniVersion</code>（string）：格式遵循  <a href="https://semver.org/">Semantic Version 2.0</a>，当前版本是 1.0.0</li>
+<li><code>name</code>（string）：网络名。在同一主机上不同网络配置的网络名应该（SHOULD）保持唯一，必须以数字或者字母开头，后面可选的（OPTIONAL）跟着一个或者多个字母、数字、下划线（_）、点（.）、连字符（-）</li>
+<li><code>disableCheck</code>（boolean）：如果 <code>disableCheck</code> 为 <code>true</code>，runtime 则不会调用 <code>CHECK</code> 检查网络配置列表。当合并网络配置时，错误是已知的，这时可以使用这个参数</li>
+<li><code>plugins</code>（list）：CNI 插件和其配置列表</li>
+</ul>
+<h4 id="plugin-configuration-objects">Plugin configuration objects</h4>
+<p>Plugin 配置对象中除了本文档定义的字段，还可以包含额外的字段。runtime 必须将这些额外的字段原封不动的传给 plugin（详情见 section 3）。</p>
+<h5 id="required-keys">Required keys</h5>
+<ul>
+<li><code>type</code>（string）：与 CNI plugin 二进制名匹配</li>
+</ul>
+<h5 id="optional-keysused-by-the-protocol">Optional keys，used by the protocol</h5>
+<ul>
+<li><code>capabilities</code>（dictionary）：详情见 section 3</li>
+</ul>
+<h5 id="reserved-keysused-by-the-protocol">Reserved keys，used by the protocol</h5>
+<p>这些字段由 runtime 在执行期间生成，所以不能在配置文件中使用。</p>
+<ul>
+<li><code>runtimeConfig</code></li>
+<li><code>args</code></li>
+<li>任何以 <code>cni.dev/</code> 为前缀的字段</li>
+</ul>
+<h5 id="optional-keyswell-known">Optional keys，well-known</h5>
+<p>这些字段不能被 protocol 使用，但是对于 plugin 来说是有意义的。如果 plugin 使用这些字段，应该（SHOULD）遵循它们的语义。</p>
+<ul>
+<li><code>ipMasq</code>（boolean）：如果 plugin 支持，将会在主机上为这个网络配置 IP masquerade</li>
+<li><code>ipam</code>（dictionary）
+<ul>
+<li><code>type</code>（string）</li>
+</ul>
+</li>
+<li><code>dns</code>（）：
+<ul>
+<li><code>nameservers</code></li>
+<li><code>domain</code></li>
+<li><code>search</code></li>
+<li><code>options</code></li>
+</ul>
+</li>
+</ul>
+<h5 id="other-keys">Other keys</h5>
+<p>这些字段只能被 plugin 识别。当 runtime 在使用网络配置时必须将这些字段保留下来。</p>
+<h5 id="example-configuration">Example configuration</h5>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;cniVersion&#34;</span>: <span style="color:#e6db74">&#34;1.0.0&#34;</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;name&#34;</span>: <span style="color:#e6db74">&#34;dbnet&#34;</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;plugins&#34;</span>: [
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;type&#34;</span>: <span style="color:#e6db74">&#34;bridge&#34;</span>,
+</span></span><span style="display:flex;"><span>      <span style="color:#75715e">// plugin specific parameters
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>      <span style="color:#f92672">&#34;bridge&#34;</span>: <span style="color:#e6db74">&#34;cni0&#34;</span>,
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;keyA&#34;</span>: [<span style="color:#e6db74">&#34;some more&#34;</span>, <span style="color:#e6db74">&#34;plugin specific&#34;</span>, <span style="color:#e6db74">&#34;configuration&#34;</span>],
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;ipam&#34;</span>: {
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;type&#34;</span>: <span style="color:#e6db74">&#34;host-local&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// ipam specific
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        <span style="color:#f92672">&#34;subnet&#34;</span>: <span style="color:#e6db74">&#34;10.1.0.0/16&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;gateway&#34;</span>: <span style="color:#e6db74">&#34;10.1.0.1&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;routes&#34;</span>: [
+</span></span><span style="display:flex;"><span>            {<span style="color:#f92672">&#34;dst&#34;</span>: <span style="color:#e6db74">&#34;0.0.0.0/0&#34;</span>}
+</span></span><span style="display:flex;"><span>        ]
+</span></span><span style="display:flex;"><span>      },
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;dns&#34;</span>: {
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;nameservers&#34;</span>: [ <span style="color:#e6db74">&#34;10.1.0.1&#34;</span> ]
+</span></span><span style="display:flex;"><span>      }
+</span></span><span style="display:flex;"><span>    },
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;type&#34;</span>: <span style="color:#e6db74">&#34;tuning&#34;</span>,
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;capabilities&#34;</span>: {
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;mac&#34;</span>: <span style="color:#66d9ef">true</span>
+</span></span><span style="display:flex;"><span>      },
+</span></span><span style="display:flex;"><span>      <span style="color:#f92672">&#34;sysctl&#34;</span>: {
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;net.core.somaxconn&#34;</span>: <span style="color:#e6db74">&#34;500&#34;</span>
+</span></span><span style="display:flex;"><span>      }
+</span></span><span style="display:flex;"><span>    },
+</span></span><span style="display:flex;"><span>    {
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;type&#34;</span>: <span style="color:#e6db74">&#34;portmap&#34;</span>,
+</span></span><span style="display:flex;"><span>        <span style="color:#f92672">&#34;capabilities&#34;</span>: {<span style="color:#f92672">&#34;portMappings&#34;</span>: <span style="color:#66d9ef">true</span>}
+</span></span><span style="display:flex;"><span>    }
+</span></span><span style="display:flex;"><span>  ]
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="section-2execution-protocol">Section 2：Execution Protocol</h2>
+<h3 id="overview">Overview</h3>
+<p>CNI protocol 是 runtime 与 plugin 二进制之间的通信协议。</p>
+<p>CNI plugin 主要负责以某种方式配置容器的网络接口。主要分为两大类：</p>
+<ul>
+<li>Interface plugin：创建容器网络接口，并保证其连通性</li>
+<li>Chained plugin：调整已经创建的容器网络接口（也许会因此创建更多的接口）</li>
+</ul>
+<p>Runtime 通过环境变量和配置（配置通过 sdtin 传递）传递参数给 plugin。Plugin 的执行结果（格式见 section 5）通过 stdout 或者 stderr 返回给 runtime。配置和执行结果都遵循 JSON 格式。</p>
+<p>每次调用，runtime 传给 plugin 的参数通常是不同的，但其中配置是不变的（译者注：意思是每次调用只有环境变量会发生变化）。</p>
+<p>Runtime 必须在它自己的网络隔离域中执行 plugin（通常是根网络命名空间 dom0）。</p>
+<h3 id="parameters">Parameters</h3>
+<p>Runtime 调用 plugin 使用的环境变量如下：</p>
+<ul>
+<li><code>CNI_COMMAND</code>：分为 <code>ADD</code>、<code>DEL</code>、 <code>CHECK</code>、 <code>VERSION</code></li>
+<li><code>CNI_CONTAINERID</code>：由 runtime 生成，用来唯一标识一个容器。必须非空。必须以数字或者字母开头，后面可选的（OPTIONAL）跟着一个或者多个字母、数字、下划线（_）、点（.）、连字符（-）</li>
+<li><code>CNI_NETNS</code>：容器隔离域的引用。如果使用网络命令空间，那么 <code>CNI_NETNS</code> 形如 /run/netns/[nsname]</li>
+<li><code>CNI_IFNAME</code>：容器内创建的网络接口名</li>
+<li><code>CNI_ARGS</code>：额外的参数，形如 FOO=BAR;ABC=123</li>
+<li><code>CNI_PATH</code>：用来寻找 CNI 二进制的路径列表，Linux 下以冒号分割</li>
+</ul>
+<blockquote>
+<p>译者注：<code>CNI_COMMAND</code> 与 <code>CNI_CONTAINERID</code> 共同组成 plugin 操作网络的唯一标识。</p>
+</blockquote>
+<h3 id="errors">Errors</h3>
+<p>如果执行成功，插件返回 0；如果执行失败，插件返回特定的 JSON 对象（详情见 section 5）。</p>
+<h3 id="cni-operations">CNI operations</h3>
+<p>CNI 操作通过 <code>CNI_COMMAND</code> 传给 plugin，有如下 4 种操作：</p>
+<h4 id="add"><code>ADD</code></h4>
+<p>向容器中添加网络。当 plugin 接受到 <code>ADD</code> 命令后，会完成以下两件事之一：</p>
+<ul>
+<li>在 <code>CNI_NETNS</code> 中创建一个名为 <code>CNI_IFNAME</code> 的接口（译者注：新增）</li>
+<li>调整 <code>CNI_NETNS</code> 中  <code>CNI_IFNAME</code> 接口的配置（译者注：修改）</li>
+</ul>
+<p>如果容器中已经存在相同的接口名，plugin 必须返回错误。</p>
+<h5 id="input">input</h5>
+<p>输入分为 3 部分：</p>
+<ul>
+<li>JSON 格式的配置文件，通过 stdin 传给 plugin</li>
+<li>必要的（REQUIRED）环境变量参数：<code>CNI_COMMAND</code>、<code>CNI_CONTAINERID</code>、<code>CNI_NETNS</code>、<code>CNI_IFNAME</code></li>
+<li>可选的（OPTIONAL）环境变量参数：<code>CNI_ARGS</code>、<code>CNI_PATH</code></li>
+</ul>
+<h4 id="del"><code>DEL</code></h4>
+<p>从容器中删除网络。当 plugin 接受到 <code>DEL</code> 命令后，会完成以下两件事之一：</p>
+<ul>
+<li>在 <code>CNI_NETNS</code> 中删除一个名为 <code>CNI_IFNAME</code> 的接口</li>
+<li>回滚 <code>ADD</code> 中的变更</li>
+</ul>
+<p>通常来说，在执行 <code>DEL</code> 的过程中，即使发生了某些错误（译者注：例如需要操作的容器网络命名空间被删除），也应该忽略。</p>
+<h5 id="input-1">input</h5>
+<p>输入分为 3 部分：</p>
+<ul>
+<li>JSON 格式的配置文件，通过 stdin 传给 plugin</li>
+<li>必要的（REQUIRED）环境变量参数：<code>CNI_COMMAND</code>、<code>CNI_CONTAINERID</code>、<code>CNI_IFNAME</code></li>
+<li>可选的（OPTIONAL）环境变量参数：<code>CNI_NETNS</code>、<code>CNI_ARGS</code>、<code>CNI_PATH</code></li>
+</ul>
+<blockquote>
+<p>译者注：这里 CNI_NETNS 变成了可选参数</p>
+</blockquote>
+<h4 id="check"><code>CHECK</code></h4>
+<p>Runtime 通过 <code>CHECK</code> 命令检查容器的网络是否符合预期。</p>
+<p>对于 plugin 来说：</p>
+<ul>
+<li>TODO</li>
+</ul>
+<p>对于 runtime 来说：</p>
+<ul>
+<li>TODO</li>
+</ul>
+<h5 id="input-2">input</h5>
+<p>输入分为 3 部分（对于同一个容器，所有参数除了 <code>CNI_PATH</code>，必须与 <code>ADD</code> 保持一致 ）：</p>
+<ul>
+<li>JSON 格式的配置文件，通过 stdin 传给 plugin</li>
+<li>必要的（REQUIRED）环境变量参数：<code>CNI_COMMAND</code>、<code>CNI_CONTAINERID</code>、<code>CNI_NETNS</code>、<code>CNI_IFNAME</code></li>
+<li>可选的（OPTIONAL）环境变量参数：<code>CNI_ARGS</code>、<code>CNI_PATH</code></li>
+</ul>
+<h4 id="version"><code>VERSION</code></h4>
+<p>检查 plugin 支持的版本。</p>
+<h5 id="input-3">input</h5>
+<p>输入分为 3 部分：</p>
+<ul>
+<li>JSON 格式的配置文件（额外加上 <code>cniVersion</code> 字段），通过 stdin 传给 plugin</li>
+<li>必要的（REQUIRED）环境变量参数：<code>CNI_COMMAND</code></li>
+</ul>
+<h2 id="section-3execution-of-network-configurations">Section 3：Execution of Network Configurations</h2>
+<p>本节讨论 runtime 如何将配置转换成对 plugin 的各种 <code>ADD</code>、<code>DEL</code>、 <code>VERSION</code> 等操作。</p>
+<p>将配置文件应用到容器上的操作称为 <em>attachment</em>，由 <code>(CNI_CONTAINERID, CNI_IFNAME)</code> 元组唯一标识。</p>
+<h3 id="lifecycle--ordering">Lifecycle &amp; Ordering</h3>
+<ul>
+<li>在调用 plugin 前，runtime 必须为容器创建一个新的网络命名空间</li>
+<li>对于同一个容器，runtime 不能并行执行 attachment；对于不同的容器，runtime 可以并行执行 attachment</li>
+<li>（上面说到，对于不同容器，runtime 可以并行执行 attachment）plugin 需要自己对共享资源（如 IPAM 数据库）加上互斥</li>
+<li>Runtime 必须确保 <code>ADD</code> 有对应的 <code>DEL</code>（即使 <code>ADD</code> 失败，也需要执行 <code>DEL</code>），唯一的例外是 node 失联。</li>
+<li><code>DEL</code> 后可以接着执行多个 <code>DEL</code></li>
+<li>一对 <code>ADD</code>/<code>DEL</code> 应该使用同一份配置文件</li>
+<li>多个 attachment 应该使用同一份配置文件</li>
+<li>Runtime 应该负责清理容器的网络命名空间</li>
+</ul>
+<h3 id="attachment-parameters">Attachment Parameters</h3>
+<p>尽管不同 attachment 应该使用同一份配置文件，但是以下参数在不同 attachment 间是变化的：</p>
+<ul>
+<li><code>CNI_CONTAINERID</code></li>
+<li><code>CNI_NETNS</code></li>
+<li><code>CNI_IFNAME</code></li>
+<li><code>CNI_ARGS</code></li>
+<li><a href="https://github.com/containernetworking/cni/blob/main/CONVENTIONS.md#dynamic-plugin-specific-fields-capabilities--runtime-configuration">Capability Arguments</a></li>
+</ul>
+<p>另外，需要向 runtime 提供 plugin 的地址列表，这个列表还需要通过环境变量 <code>CNI_PATH</code> 传递给 plugin。</p>
+<h3 id="adding-an-attachment">Adding an attachment</h3>
+<p>遍历配置文件中的 plugins 字段（plugins 字段的类型是 list），每次遍历依次完成如下工作：</p>
+<ul>
+<li>查找名为 type 的二进制文件</li>
+<li>生成请求 plugin 的请求参数（如果不是第一个插件，需要带上 <code>prevResult</code>，即上一个插件的执行结果）</li>
+<li>使用 CNI_COMMAND=ADD 执行 plugin 二进制，并按照规范提供参数给 plugin</li>
+</ul>
+<p>注：过程中遇到错误则返回</p>
+<h3 id="deleting-an-attachment">Deleting an attachment</h3>
+<blockquote>
+<p>译者注：与 Adding an attachment 中的流程基本相同，具体区别见<a href="https://github.com/containernetworking/cni/blob/main/SPEC.md#deleting-an-attachment">原文</a>。</p>
+</blockquote>
+<h3 id="checking-an-attachment">Checking an attachment</h3>
+<p>Runtime 可以通过 plugin 检查 attachment 是否生效。检查时使用的参数与执行 <code>ADD</code> 时的参数保持一致。</p>
+<blockquote>
+<p>译者注：与 Adding an attachment 中的流程基本相同，具体区别见<a href="https://github.com/containernetworking/cni/blob/main/SPEC.md#checking-an-attachment">原文</a>。</p>
+</blockquote>
+<h3 id="deriving-execution-configuration-from-plugin-configuration">Deriving <strong>execution configuration</strong> from <strong>plugin configuration</strong></h3>
+<p>配置文件中的 plugins 列表需要转换成 plugin 能识别的格式（即 plugin configuration 转换成 execution  configuration）。转换过程中，大部分内容不会变更，除了向每个 plugin 的 execution  configuration 中插入：</p>
+<ul>
+<li><code>cniVersion</code></li>
+<li><code>name</code></li>
+<li><code>prevReslut</code>（即上一个 plugin 的执行结果）</li>
+<li><code>runtimeConfig</code></li>
+</ul>
+<h4 id="deriving-runtimeconfig">Deriving <code>runtimeConfig</code></h4>
+<p>Runtime 需要移除 <code>capabilities</code> 字段，并将其转换成 plugin 能识别的方式。</p>
+<p>转换前：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;type&#34;</span>: <span style="color:#e6db74">&#34;myPlugin&#34;</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;capabilities&#34;</span>: {
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;portMappings&#34;</span>: <span style="color:#66d9ef">true</span>
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>转换后：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;type&#34;</span>: <span style="color:#e6db74">&#34;myPlugin&#34;</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;runtimeConfig&#34;</span>: {
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;portMappings&#34;</span>: [ { <span style="color:#f92672">&#34;hostPort&#34;</span>: <span style="color:#ae81ff">8080</span>, <span style="color:#f92672">&#34;containerPort&#34;</span>: <span style="color:#ae81ff">80</span>, <span style="color:#f92672">&#34;protocol&#34;</span>: <span style="color:#e6db74">&#34;tcp&#34;</span> } ]
+</span></span><span style="display:flex;"><span>  }
+</span></span><span style="display:flex;"><span>  <span style="color:#960050;background-color:#1e0010">...</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><h2 id="section-4plugin-delegation">Section 4：Plugin Delegation</h2>
+<p>TODO</p>
+<h2 id="section-5result-types">Section 5：Result Types</h2>
+<p>Plugin 通常返回以下 3 种类型之一：</p>
+<ul>
+<li>Success</li>
+<li>Error</li>
+<li>Version</li>
+</ul>
+<h3 id="success">Success</h3>
+<p>Runtime 会提供给 plugin 上一个 plugin 执行的结果 <code>prevResult</code>，然后将 <code>prevResult</code> 返回。这个过程中，plugin 可能会修改 <code>prevResult</code>  的值。如果 plugin 没有修改 <code>prevResult</code>，那么说明 plugin 的执行结果为 success。</p>
+<p>执行 <code>ADD</code> 成功后，返回如下 JSON 结构：</p>
+<ul>
+<li><code>cniVersion</code>：与 plugin 接受到的保持一致</li>
+<li><code>interfaces</code>：本次 attachment 中创建的所有 interface（容器级 or 主机级）
+<ul>
+<li><code>name</code>：名字</li>
+<li><code>mac</code>：mac 地址</li>
+<li><code>sandbox</code>：如果是容器级接口，通常是网络命名空间的文件路径（即 <code>CNI_NETNS</code>）；如果是主机级，则为空</li>
+</ul>
+</li>
+<li><code>ips</code>：本次 attachment 分配的 ip 列表
+<ul>
+<li><code>address</code>：CIDR 格式的地址</li>
+<li><code>gateway</code>：子网的默认网关</li>
+<li><code>interface</code>：<code>interfaces</code> 字段的索引</li>
+</ul>
+</li>
+<li><code>routes</code>：本次 attachment 创建的路由
+<ul>
+<li><code>dst</code>：路由的目的地址</li>
+<li><code>gw</code>：路由的下一跳地址</li>
+</ul>
+</li>
+<li><code>dns</code>：
+<ul>
+<li><code>nameservers</code>：</li>
+<li><code>domain</code>：</li>
+<li><code>search</code>：</li>
+<li><code>options</code>：</li>
+</ul>
+</li>
+</ul>
+<h3 id="error">Error</h3>
+<p>如果 plugin 在执行过程遇到错误，它应该返回如下格式的错误信息：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;cniVersion&#34;</span>: <span style="color:#e6db74">&#34;1.0.0&#34;</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;code&#34;</span>: <span style="color:#ae81ff">7</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;msg&#34;</span>: <span style="color:#e6db74">&#34;Invalid Configuration&#34;</span>,
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">&#34;details&#34;</span>: <span style="color:#e6db74">&#34;Network 192.168.0.0/31 too small to allocate from.&#34;</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>错误码 0-99 为保留错误码。</p>
+<table>
+<thead>
+<tr>
+<th>错误码</th>
+<th>错误描述</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1</code></td>
+<td>CNI 版本不兼容</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td>配置文件中存在不支持的字段。错误信息中必须包含不支持的字段相关信息</td>
+</tr>
+<tr>
+<td><code>3</code></td>
+<td>容器不存在。如果返回这个错误，意味着 runtime 不用负责清理（例如，执行 <code>DEL</code> 动作）</td>
+</tr>
+<tr>
+<td><code>4</code></td>
+<td>无效的参数（如 CNI_COMMAND, CNI_CONTAINERID 等）</td>
+</tr>
+<tr>
+<td><code>5</code></td>
+<td>I/O 错误（ 如无法从 stdin 中读取配置文件）</td>
+</tr>
+<tr>
+<td><code>6</code></td>
+<td>反序列化错误（如将配置文件反序列化成结构体出错）</td>
+</tr>
+<tr>
+<td><code>7</code></td>
+<td>配置文件无效</td>
+</tr>
+<tr>
+<td><code>11</code></td>
+<td>可以重试的错误</td>
+</tr>
+</tbody>
+</table>
+<p>另外， stderr 可以输出非结构化的信息（如日志）</p>
+<h3 id="version-1">Version</h3>
+<p>执行 <code>VERSION</code> 成功后，返回如下 JSON 结构：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-json" data-lang="json"><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;cniVersion&#34;</span>: <span style="color:#e6db74">&#34;1.0.0&#34;</span>,
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">&#34;supportedVersions&#34;</span>: [ <span style="color:#e6db74">&#34;0.1.0&#34;</span>, <span style="color:#e6db74">&#34;0.2.0&#34;</span>, <span style="color:#e6db74">&#34;0.3.0&#34;</span>, <span style="color:#e6db74">&#34;0.3.1&#34;</span>, <span style="color:#e6db74">&#34;0.4.0&#34;</span>, <span style="color:#e6db74">&#34;1.0.0&#34;</span> ]
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><blockquote>
+<p>Latest update: 2022/06/24</p>
+</blockquote>
+
+  </div>
+
+  <footer class="post-footer">
+    
+
+    
+
+    
+    
+  </footer>
+  
+  <div class="comments">
+  <div class="comments">
+
+
+
+</div>
+  </div>
+</article>
+
+  <div class="foot">
+  
+  &copy; 2019 - 2022 &#183;
+  <a href="/"> Thinking Cell </a> &#183;
+  Theme <a href="https://github.com/RainerChiang/simpleness">Simpleness</a> Powered by <a href="https://gohugo.io/">Hugo</a> &#183;
+  <a href="#"><i class="fas fa-chevron-up"></i></a>
+</div>
+</body>
+  
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.1.1/jquery.slim.min.js" integrity="sha256-/SIrNqv8h6QGKDuNoLGA4iret+kyesCkHGzVUUV0shc=" crossorigin="anonymous"></script>
+<script>
+    (function() {
+        var $toc = $('#TableOfContents');
+        if ($toc.length > 0) {
+            var $window = $(window);
+
+            function onScroll(){
+                var currentScroll = $window.scrollTop();
+                var h = $('.post-text h1, .post-text h2, .post-text h3, .post-text h4, .post-text h5, .post-text h6');
+                var id = "";
+                h.each(function (i, e) {
+                    e = $(e);
+                    if (e.offset().top - 10 <= currentScroll) {
+                        id = e.attr('id');
+                    }
+                });
+                var active = $toc.find('a.active');
+                if (active.length == 1 && active.eq(0).attr('href') == '#' + id) return true;
+
+                active.each(function (i, e) {
+                    $(e).removeClass('active').siblings('ul').hide();
+                });
+                $toc.find('a[href="#' + id + '"]').parentsUntil('#TableOfContents').each(function (i, e) {
+                    $(e).children('a').addClass('active').siblings('ul').show();
+                });
+            }
+
+            $window.on('scroll', onScroll);
+            $(document).ready(function() {
+                $toc.find('a').parent('li').find('ul').hide();
+                onScroll();
+                document.getElementsByClassName('post-toc')[0].style.display = '';
+            });
+        }
+    })();
+</script>
+
+
+</html>

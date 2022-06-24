@@ -3,7 +3,7 @@
   <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="generator" content="Hugo 0.91.2" />
+  <meta name="generator" content="Hugo 0.100.2" />
   <title> Git源码解读 | Thinking Cell </title>
   <link rel="stylesheet" href="https://drivebyer.github.io/css/simpleness.css">
   <link rel="canonical" href="https://drivebyer.github.io/posts/git%E6%BA%90%E7%A0%81%E8%A7%A3%E8%AF%BB/">
@@ -75,26 +75,26 @@
 </blockquote>
 <h2 id="结构初探">结构初探</h2>
 <p>从 Github 上克隆 Git 源代码，将版本切换到第一个 commit，目录结构如下：</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-fallback" data-lang="fallback">├── Makefile
-├── README
-├── cache.h
-├── cat-file.c
-├── commit-tree.c
-├── init-db.c
-├── read-cache.c
-├── read-tree.c
-├── show-diff.c
-├── update-cache.c
-├── write-tree.c
-</code></pre></div><p>目录结构十分简单，先看看 README 文件的内容，了解一下 Linus 最初是怎么介绍 Git 的。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>├── Makefile
+</span></span><span style="display:flex;"><span>├── README
+</span></span><span style="display:flex;"><span>├── cache.h
+</span></span><span style="display:flex;"><span>├── cat-file.c
+</span></span><span style="display:flex;"><span>├── commit-tree.c
+</span></span><span style="display:flex;"><span>├── init-db.c
+</span></span><span style="display:flex;"><span>├── read-cache.c
+</span></span><span style="display:flex;"><span>├── read-tree.c
+</span></span><span style="display:flex;"><span>├── show-diff.c
+</span></span><span style="display:flex;"><span>├── update-cache.c
+</span></span><span style="display:flex;"><span>├── write-tree.c
+</span></span></code></pre></div><p>目录结构十分简单，先看看 README 文件的内容，了解一下 Linus 最初是怎么介绍 Git 的。</p>
 <p>Git 的设计中有两类抽象：object database 和 current directory cache。</p>
 <h3 id="1-the-object-database">1. The Object Database</h3>
 <p>object database 是一系列 object 的集合。在这个集合中，object 间可以互相引用，它们之间形成一种层级关系。</p>
 <p>在 Git 中不会直接操作一个原生的 object，而是操作处理后的 object，一个 object 会经过如下处理：</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-fallback" data-lang="fallback">+------+    zlib    +------+    SHA1    +------+
-|object| +--------&gt; | ...  | +--------&gt; | ...  |
-+------+  size+type +------+            +------+
-</code></pre></div><p>TIPS：在压缩 object 前，会将其 size 和 type 写入起始位置一并压缩。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>+------+    zlib    +------+    SHA1    +------+
+</span></span><span style="display:flex;"><span>|object| +--------&gt; | ...  | +--------&gt; | ...  |
+</span></span><span style="display:flex;"><span>+------+  size+type +------+            +------+
+</span></span></code></pre></div><p>TIPS：在压缩 object 前，会将其 size 和 type 写入起始位置一并压缩。</p>
 <p>对于 object 来说，有以下两种 type：</p>
 <h4 id="blob">BLOB</h4>
 <p>BLOB 具有下列属性：</p>
@@ -121,88 +121,88 @@
 <p>下面我们一步步来学习 Git 是如何做好一个 content tracker 的。在开始之前，需要对源码进行构建，才会得到相应的 Git 命令。</p>
 <h3 id="1-init-db">1. init-db</h3>
 <p>在 test_git 目录下执行 <code>init_db</code>，会创建出如下目录结构：</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-fallback" data-lang="fallback">test_git/
-└── .dircache
-    └── objects
-        ├── 00
-        ├── 01
-        ├── fe
-        ...
-        └── ff
-</code></pre></div><p>目录 <code>test_git/.dircache/objects/</code> 就是前面提过的 <strong>Object Database</strong>。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>test_git/
+</span></span><span style="display:flex;"><span>└── .dircache
+</span></span><span style="display:flex;"><span>    └── objects
+</span></span><span style="display:flex;"><span>        ├── 00
+</span></span><span style="display:flex;"><span>        ├── 01
+</span></span><span style="display:flex;"><span>        ├── fe
+</span></span><span style="display:flex;"><span>        ...
+</span></span><span style="display:flex;"><span>        └── ff
+</span></span></code></pre></div><p>目录 <code>test_git/.dircache/objects/</code> 就是前面提过的 <strong>Object Database</strong>。</p>
 <h3 id="2-update-cache">2. update-cache</h3>
 <p>假设现在有一个学生名单和教室名单：</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-fallback" data-lang="fallback">root@master:~/Github/test_git# ls
-students  teachers
-root@master:~/Github/test_git# cat students 
-Zhang San
-root@master:~/Github/test_git# cat teachers 
-Mr. Wang
-</code></pre></div><p>我们使用 Git 来跟踪这两个文件内容的变更，首先，Git 需要知道文件修改前的样子，我们使用 <code>update-cache</code> 来告诉它：</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-fallback" data-lang="fallback">root@master:~/Github/test_git# ../git/update-cache teachers students 
-root@master:~/Github/test_git# tree .dircache/ -a
-.dircache/
-├── index
-└── objects
-    ├── 00
-    ├── 01
-		...
-    ├── 2f
-    │   └── 942698bb0133aa13b46a1001ec7a718dbc32b8
-    ├── 30
-		...
-    ├── 3a
-    │   └── c6ffce6b04e98c992a7dde76a5b7fab88be34f
-    ├── 3b
-		...
-    └── ff
-</code></pre></div><p>执行这个命令后，新增了 3 个文件，这 3 个文件描述了名单修改前的样子，看看这文件里的内容是什么：</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-fallback" data-lang="fallback">root@master:~/Github# cat test_git/.dircache/index 
-CRIDw ??f??{B??7????????_b??-??_b??-????
-:???k錙*}?v??????studentsroot@master:~/Github# 
-root@master:~/Github# cat test_git/.dircache/objects/3a/c6ffce6b04e98c992a7dde76a5b7fab88be34f 
-x?K??OR04`??H?KN??4?eroot@master:~/Github#
-</code></pre></div><p>看来内容加密了，读一读源码 <code>update_cache.c</code> 看看到底发生了什么。<code>update_cache.c</code> 主流程如下：</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-fallback" data-lang="fallback">main/
-├── read_cache
-├── verify_path
-├── add_file_to_cache
-│   └── index_fd
-│       └── write_sha1_buffer
-│   └── add_cache_entry
-└── write_cache
-</code></pre></div><p>函数名中的的 <strong>cache</strong> 也就是上面的 index 文件，也就是 <strong>Current Directory Cache</strong>。执行 <code>update_cache students teachers</code> 后，将 students 和 teachers 转换成 <code>cache_entry</code> 写入 index 文件中。index 文件的内容格式如下：</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-fallback" data-lang="fallback">/*
-+------------+
-|cache_header|
-+------------+
-|cache_entry |
-+------------+
-|    ...     |
-+------------+
-|cache_entry |
-+------------+
-*/
-struct cache_header {
-	unsigned int signature;
-	unsigned int version;
-	unsigned int entries;
-	unsigned char sha1[20];
-};
-struct cache_entry {
-	struct cache_time ctime;
-	struct cache_time mtime;
-	unsigned int st_dev;
-	unsigned int st_ino;
-	unsigned int st_mode;
-	unsigned int st_uid;
-	unsigned int st_gid;
-	unsigned int st_size;
-	unsigned char sha1[20]; // 用当前文件内容生成 sha1 的值，用 sha1 生成 blob 文件名
-	unsigned short namelen;
-	unsigned char name[0];
-};
-</code></pre></div><p>不难看出，index 文件中记录了 Git 当前跟踪的文件元信息。</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>root@master:~/Github/test_git# ls
+</span></span><span style="display:flex;"><span>students  teachers
+</span></span><span style="display:flex;"><span>root@master:~/Github/test_git# cat students 
+</span></span><span style="display:flex;"><span>Zhang San
+</span></span><span style="display:flex;"><span>root@master:~/Github/test_git# cat teachers 
+</span></span><span style="display:flex;"><span>Mr. Wang
+</span></span></code></pre></div><p>我们使用 Git 来跟踪这两个文件内容的变更，首先，Git 需要知道文件修改前的样子，我们使用 <code>update-cache</code> 来告诉它：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>root@master:~/Github/test_git# ../git/update-cache teachers students 
+</span></span><span style="display:flex;"><span>root@master:~/Github/test_git# tree .dircache/ -a
+</span></span><span style="display:flex;"><span>.dircache/
+</span></span><span style="display:flex;"><span>├── index
+</span></span><span style="display:flex;"><span>└── objects
+</span></span><span style="display:flex;"><span>    ├── 00
+</span></span><span style="display:flex;"><span>    ├── 01
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>    ├── 2f
+</span></span><span style="display:flex;"><span>    │   └── 942698bb0133aa13b46a1001ec7a718dbc32b8
+</span></span><span style="display:flex;"><span>    ├── 30
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>    ├── 3a
+</span></span><span style="display:flex;"><span>    │   └── c6ffce6b04e98c992a7dde76a5b7fab88be34f
+</span></span><span style="display:flex;"><span>    ├── 3b
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>    └── ff
+</span></span></code></pre></div><p>执行这个命令后，新增了 3 个文件，这 3 个文件描述了名单修改前的样子，看看这文件里的内容是什么：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>root@master:~/Github# cat test_git/.dircache/index 
+</span></span><span style="display:flex;"><span>CRIDw ??f??{B??7????????_b??-??_b??-????
+</span></span><span style="display:flex;"><span>:???k錙*}?v??????studentsroot@master:~/Github# 
+</span></span><span style="display:flex;"><span>root@master:~/Github# cat test_git/.dircache/objects/3a/c6ffce6b04e98c992a7dde76a5b7fab88be34f 
+</span></span><span style="display:flex;"><span>x?K??OR04`??H?KN??4?eroot@master:~/Github#
+</span></span></code></pre></div><p>看来内容加密了，读一读源码 <code>update_cache.c</code> 看看到底发生了什么。<code>update_cache.c</code> 主流程如下：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>main/
+</span></span><span style="display:flex;"><span>├── read_cache
+</span></span><span style="display:flex;"><span>├── verify_path
+</span></span><span style="display:flex;"><span>├── add_file_to_cache
+</span></span><span style="display:flex;"><span>│   └── index_fd
+</span></span><span style="display:flex;"><span>│       └── write_sha1_buffer
+</span></span><span style="display:flex;"><span>│   └── add_cache_entry
+</span></span><span style="display:flex;"><span>└── write_cache
+</span></span></code></pre></div><p>函数名中的的 <strong>cache</strong> 也就是上面的 index 文件，也就是 <strong>Current Directory Cache</strong>。执行 <code>update_cache students teachers</code> 后，将 students 和 teachers 转换成 <code>cache_entry</code> 写入 index 文件中。index 文件的内容格式如下：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>/*
+</span></span><span style="display:flex;"><span>+------------+
+</span></span><span style="display:flex;"><span>|cache_header|
+</span></span><span style="display:flex;"><span>+------------+
+</span></span><span style="display:flex;"><span>|cache_entry |
+</span></span><span style="display:flex;"><span>+------------+
+</span></span><span style="display:flex;"><span>|    ...     |
+</span></span><span style="display:flex;"><span>+------------+
+</span></span><span style="display:flex;"><span>|cache_entry |
+</span></span><span style="display:flex;"><span>+------------+
+</span></span><span style="display:flex;"><span>*/
+</span></span><span style="display:flex;"><span>struct cache_header {
+</span></span><span style="display:flex;"><span>	unsigned int signature;
+</span></span><span style="display:flex;"><span>	unsigned int version;
+</span></span><span style="display:flex;"><span>	unsigned int entries;
+</span></span><span style="display:flex;"><span>	unsigned char sha1[20];
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span>struct cache_entry {
+</span></span><span style="display:flex;"><span>	struct cache_time ctime;
+</span></span><span style="display:flex;"><span>	struct cache_time mtime;
+</span></span><span style="display:flex;"><span>	unsigned int st_dev;
+</span></span><span style="display:flex;"><span>	unsigned int st_ino;
+</span></span><span style="display:flex;"><span>	unsigned int st_mode;
+</span></span><span style="display:flex;"><span>	unsigned int st_uid;
+</span></span><span style="display:flex;"><span>	unsigned int st_gid;
+</span></span><span style="display:flex;"><span>	unsigned int st_size;
+</span></span><span style="display:flex;"><span>	unsigned char sha1[20]; // 用当前文件内容生成 sha1 的值，用 sha1 生成 blob 文件名
+</span></span><span style="display:flex;"><span>	unsigned short namelen;
+</span></span><span style="display:flex;"><span>	unsigned char name[0];
+</span></span><span style="display:flex;"><span>};
+</span></span></code></pre></div><p>不难看出，index 文件中记录了 Git 当前跟踪的文件元信息。</p>
 <p><strong>update_cache</strong> 流程中，最重要的是函数 <code>add_file_to_cache()</code> ，它主要做了以下几件事：</p>
 <ol>
 <li>在 <code>cache_entry</code> 中记录当下文件的元数据（file attribute?）；</li>
@@ -231,209 +231,208 @@ struct cache_entry {
 </li>
 </ol>
 <h3 id="5-write-tree">5. write-tree</h3>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-fallback" data-lang="fallback">root@master:~/Github/test_git# ../git/write-tree 
-5c58d749d3c05cd4088561011226cee78ca0221c
-root@master:~/Github/test_git# tree .dircache/
-.dircache/
-├── index
-└── objects
-    ├── 00
-    ├── 01
-		...
-    ├── 2f
-    │   └── 942698bb0133aa13b46a1001ec7a718dbc32b8
-    ├── 30
-		...
-    ├── 3a
-    │   └── c6ffce6b04e98c992a7dde76a5b7fab88be34f
-    ├── 3b
-		...
-    ├── 5c
-    │   └── 58d749d3c05cd4088561011226cee78ca0221c
-    ├── 5d
-		...
-    └── ff
-</code></pre></div><p>执行  <code>write-tree</code> 后，Object Database 中新增了一个 object 文件，我们通过 <code>cat-file</code> 对比一下 3 个 object 文件内容：</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-fallback" data-lang="fallback">root@master:~/Github/test_git# ../git/cat-file 2f942698bb0133aa13b46a1001ec7a718dbc32b8
-temp_git_file_kEdIpF: blob
-root@master:~/Github/test_git# ../git/cat-file 3ac6ffce6b04e98c992a7dde76a5b7fab88be34f
-temp_git_file_uzqTV2: blob
-root@master:~/Github/test_git# ../git/cat-file 5c58d749d3c05cd4088561011226cee78ca0221c
-temp_git_file_mk4x5I: tree
-root@master:~/Github/test_git# ll
-total 32
-drwxr-xr-x 3 root root 4096 Nov 29 05:14 ./
-drwxr-xr-x 4 root root 4096 Nov 29 05:01 ../
-drwx------ 3 root root 4096 Nov 29 05:07 .dircache/
--rw-r--r-- 1 root root   10 Nov 29 05:02 students
--rw-r--r-- 1 root root    9 Nov 29 05:02 teachers
--rw------- 1 root root    9 Nov 29 05:14 temp_git_file_kEdIpF
--rw------- 1 root root   72 Nov 29 05:14 temp_git_file_mk4x5I
--rw------- 1 root root   10 Nov 29 05:14 temp_git_file_uzqTV2
-root@master:~/Github/test_git# cat temp_git_file_kEdIpF
-Mr. Wang
-root@master:~/Github/test_git# cat temp_git_file_uzqTV2
-Zhang San
-root@master:~/Github/test_git# cat temp_git_file_mk4x5I
-100644 students:???k錙*}?v??????O100644 teachers/?&amp;??3??j?zq??2?
-</code></pre></div><p>可见，新增的 object 正是一个 TREE，它的文件内容包含了两个跟踪文件的一些信息。下面是 <code>write-tree.c</code> ：</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-fallback" data-lang="fallback">int main(int argc, char **argv)
-{
-	...
-	int i, entries = read_cache();
-	...
-	for (i = 0; i &lt; entries; i++) {
-    ...
-		offset += sprintf(buffer + offset, &#34;%o %s&#34;, ce-&gt;st_mode, ce-&gt;name);
-		...
-		memcpy(buffer + offset, ce-&gt;sha1, 20);
-    ...
-	}
-	...
-	memcpy(buffer+i, &#34;tree &#34;, 5);
-  ...
-	write_sha1_file(buffer, offset);
-	return 0;
-}
-
-</code></pre></div><p>write-tree 读取 index，将 students 和 teachers 两个文件的文件模式、文件名、<code>cache_entry.sha1</code> 写入 TREE。通过写入一个 TREE，在 Object Database 中建立起了层级关系：</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-fallback" data-lang="fallback">           +-------+
-           | 5c58d |
-           ++----+-+
-            |    |
-    v-------+    +-------v
-+-------+            +-------+
-| 3ac6f |            | 2f942 |
-+-------+            +-------+
-</code></pre></div><h3 id="6-read-tree">6. read-tree</h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>root@master:~/Github/test_git# ../git/write-tree 
+</span></span><span style="display:flex;"><span>5c58d749d3c05cd4088561011226cee78ca0221c
+</span></span><span style="display:flex;"><span>root@master:~/Github/test_git# tree .dircache/
+</span></span><span style="display:flex;"><span>.dircache/
+</span></span><span style="display:flex;"><span>├── index
+</span></span><span style="display:flex;"><span>└── objects
+</span></span><span style="display:flex;"><span>    ├── 00
+</span></span><span style="display:flex;"><span>    ├── 01
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>    ├── 2f
+</span></span><span style="display:flex;"><span>    │   └── 942698bb0133aa13b46a1001ec7a718dbc32b8
+</span></span><span style="display:flex;"><span>    ├── 30
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>    ├── 3a
+</span></span><span style="display:flex;"><span>    │   └── c6ffce6b04e98c992a7dde76a5b7fab88be34f
+</span></span><span style="display:flex;"><span>    ├── 3b
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>    ├── 5c
+</span></span><span style="display:flex;"><span>    │   └── 58d749d3c05cd4088561011226cee78ca0221c
+</span></span><span style="display:flex;"><span>    ├── 5d
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>    └── ff
+</span></span></code></pre></div><p>执行  <code>write-tree</code> 后，Object Database 中新增了一个 object 文件，我们通过 <code>cat-file</code> 对比一下 3 个 object 文件内容：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>root@master:~/Github/test_git# ../git/cat-file 2f942698bb0133aa13b46a1001ec7a718dbc32b8
+</span></span><span style="display:flex;"><span>temp_git_file_kEdIpF: blob
+</span></span><span style="display:flex;"><span>root@master:~/Github/test_git# ../git/cat-file 3ac6ffce6b04e98c992a7dde76a5b7fab88be34f
+</span></span><span style="display:flex;"><span>temp_git_file_uzqTV2: blob
+</span></span><span style="display:flex;"><span>root@master:~/Github/test_git# ../git/cat-file 5c58d749d3c05cd4088561011226cee78ca0221c
+</span></span><span style="display:flex;"><span>temp_git_file_mk4x5I: tree
+</span></span><span style="display:flex;"><span>root@master:~/Github/test_git# ll
+</span></span><span style="display:flex;"><span>total 32
+</span></span><span style="display:flex;"><span>drwxr-xr-x 3 root root 4096 Nov 29 05:14 ./
+</span></span><span style="display:flex;"><span>drwxr-xr-x 4 root root 4096 Nov 29 05:01 ../
+</span></span><span style="display:flex;"><span>drwx------ 3 root root 4096 Nov 29 05:07 .dircache/
+</span></span><span style="display:flex;"><span>-rw-r--r-- 1 root root   10 Nov 29 05:02 students
+</span></span><span style="display:flex;"><span>-rw-r--r-- 1 root root    9 Nov 29 05:02 teachers
+</span></span><span style="display:flex;"><span>-rw------- 1 root root    9 Nov 29 05:14 temp_git_file_kEdIpF
+</span></span><span style="display:flex;"><span>-rw------- 1 root root   72 Nov 29 05:14 temp_git_file_mk4x5I
+</span></span><span style="display:flex;"><span>-rw------- 1 root root   10 Nov 29 05:14 temp_git_file_uzqTV2
+</span></span><span style="display:flex;"><span>root@master:~/Github/test_git# cat temp_git_file_kEdIpF
+</span></span><span style="display:flex;"><span>Mr. Wang
+</span></span><span style="display:flex;"><span>root@master:~/Github/test_git# cat temp_git_file_uzqTV2
+</span></span><span style="display:flex;"><span>Zhang San
+</span></span><span style="display:flex;"><span>root@master:~/Github/test_git# cat temp_git_file_mk4x5I
+</span></span><span style="display:flex;"><span>100644 students:???k錙*}?v??????O100644 teachers/?&amp;??3??j?zq??2?
+</span></span></code></pre></div><p>可见，新增的 object 正是一个 TREE，它的文件内容包含了两个跟踪文件的一些信息。下面是 <code>write-tree.c</code> ：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>int main(int argc, char **argv)
+</span></span><span style="display:flex;"><span>{
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	int i, entries = read_cache();
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	for (i = 0; i &lt; entries; i++) {
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>		offset += sprintf(buffer + offset, &#34;%o %s&#34;, ce-&gt;st_mode, ce-&gt;name);
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>		memcpy(buffer + offset, ce-&gt;sha1, 20);
+</span></span><span style="display:flex;"><span>    ...
+</span></span><span style="display:flex;"><span>	}
+</span></span><span style="display:flex;"><span>	...
+</span></span><span style="display:flex;"><span>	memcpy(buffer+i, &#34;tree &#34;, 5);
+</span></span><span style="display:flex;"><span>  ...
+</span></span><span style="display:flex;"><span>	write_sha1_file(buffer, offset);
+</span></span><span style="display:flex;"><span>	return 0;
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p>write-tree 读取 index，将 students 和 teachers 两个文件的文件模式、文件名、<code>cache_entry.sha1</code> 写入 TREE。通过写入一个 TREE，在 Object Database 中建立起了层级关系：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>           +-------+
+</span></span><span style="display:flex;"><span>           | 5c58d |
+</span></span><span style="display:flex;"><span>           ++----+-+
+</span></span><span style="display:flex;"><span>            |    |
+</span></span><span style="display:flex;"><span>    v-------+    +-------v
+</span></span><span style="display:flex;"><span>+-------+            +-------+
+</span></span><span style="display:flex;"><span>| 3ac6f |            | 2f942 |
+</span></span><span style="display:flex;"><span>+-------+            +-------+
+</span></span></code></pre></div><h3 id="6-read-tree">6. read-tree</h3>
 <p>read-tree 读取一个 TREE，打印 TREE 的内容（比 cat-file 的输出更具有可读性）：</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-fallback" data-lang="fallback">root@master:~/Github/test_git# ../git/read-tree 5c58d749d3c05cd4088561011226cee78ca0221c
-100644 students (3ac6ffce6b04e98c992a7dde76a5b7fab88be34f)
-100644 teachers (2f942698bb0133aa13b46a1001ec7a718dbc32b8)
-</code></pre></div><h3 id="7-commit-tree">7. commit-tree</h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>root@master:~/Github/test_git# ../git/read-tree 5c58d749d3c05cd4088561011226cee78ca0221c
+</span></span><span style="display:flex;"><span>100644 students (3ac6ffce6b04e98c992a7dde76a5b7fab88be34f)
+</span></span><span style="display:flex;"><span>100644 teachers (2f942698bb0133aa13b46a1001ec7a718dbc32b8)
+</span></span></code></pre></div><h3 id="7-commit-tree">7. commit-tree</h3>
 <p>先看看这个命令怎么用：</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-fallback" data-lang="fallback">root@master:~/Github/test_git# echo &#34;track teachers and students&#34; &gt; change.log
-root@master:~/Github/test_git# ../git/commit-tree 5c58d749d3c05cd4088561011226cee78ca0221c &lt; change.log 
-Committing initial tree 5c58d749d3c05cd4088561011226cee78ca0221c
-a25b317275e2bc71863d2074c70eeb4137d8bb90
-root@master:~/Github/test_git# ../git/cat-file a25b317275e2bc71863d2074c70eeb4137d8bb90
-temp_git_file_TPjazX: commit
-root@master:~/Github/test_git# cat temp_git_file_TPjazX 
-tree 5c58d749d3c05cd4088561011226cee78ca0221c
-author root &lt;root@master&gt; Sun Nov 29 06:19:51 2020
-committer root &lt;root@master&gt; Sun Nov 29 06:19:51 2020
-
-track teachers and students
-root@master:~/Github/test_git# tree .dircache/ -a
-.dircache/
-├── index
-└── objects
-    ├── 00
-    ├── 01
-		...
-    ├── 2f
-    │   └── 942698bb0133aa13b46a1001ec7a718dbc32b8 # BLOB
-    ├── 30
-		...
-    ├── 3a
-    │   └── c6ffce6b04e98c992a7dde76a5b7fab88be34f # BLOB
-    ├── 3b
-		...
-    ├── 5c
-    │   └── 58d749d3c05cd4088561011226cee78ca0221c # TREE
-    ├── 5d
-		...
-    ├── a2
-    │   └── 5b317275e2bc71863d2074c70eeb4137d8bb90 # COMMIT
-    ├── a3
-		...
-    └── ff
-</code></pre></div><p>使用 commit-tree，提交前面生成的 TREE 对象，生成了一个新的 object -&gt; COMMIT。这时 Object Database 中的层级关系如下：</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-fallback" data-lang="fallback">           +-------+
-           | a25b1 |commit
-           +-------+
-               |
-               v
-           +-------+
-           | 5c58d |tree
-           ++----+-+
-            |    |
-    v-------+    +-------v
-+-------+            +-------+
-| 3ac6f |blob        | 2f942 |blob
-+-------+            +-------+
-</code></pre></div><h2 id="变更版本库">变更版本库</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>root@master:~/Github/test_git# echo &#34;track teachers and students&#34; &gt; change.log
+</span></span><span style="display:flex;"><span>root@master:~/Github/test_git# ../git/commit-tree 5c58d749d3c05cd4088561011226cee78ca0221c &lt; change.log 
+</span></span><span style="display:flex;"><span>Committing initial tree 5c58d749d3c05cd4088561011226cee78ca0221c
+</span></span><span style="display:flex;"><span>a25b317275e2bc71863d2074c70eeb4137d8bb90
+</span></span><span style="display:flex;"><span>root@master:~/Github/test_git# ../git/cat-file a25b317275e2bc71863d2074c70eeb4137d8bb90
+</span></span><span style="display:flex;"><span>temp_git_file_TPjazX: commit
+</span></span><span style="display:flex;"><span>root@master:~/Github/test_git# cat temp_git_file_TPjazX 
+</span></span><span style="display:flex;"><span>tree 5c58d749d3c05cd4088561011226cee78ca0221c
+</span></span><span style="display:flex;"><span>author root &lt;root@master&gt; Sun Nov 29 06:19:51 2020
+</span></span><span style="display:flex;"><span>committer root &lt;root@master&gt; Sun Nov 29 06:19:51 2020
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>track teachers and students
+</span></span><span style="display:flex;"><span>root@master:~/Github/test_git# tree .dircache/ -a
+</span></span><span style="display:flex;"><span>.dircache/
+</span></span><span style="display:flex;"><span>├── index
+</span></span><span style="display:flex;"><span>└── objects
+</span></span><span style="display:flex;"><span>    ├── 00
+</span></span><span style="display:flex;"><span>    ├── 01
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>    ├── 2f
+</span></span><span style="display:flex;"><span>    │   └── 942698bb0133aa13b46a1001ec7a718dbc32b8 # BLOB
+</span></span><span style="display:flex;"><span>    ├── 30
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>    ├── 3a
+</span></span><span style="display:flex;"><span>    │   └── c6ffce6b04e98c992a7dde76a5b7fab88be34f # BLOB
+</span></span><span style="display:flex;"><span>    ├── 3b
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>    ├── 5c
+</span></span><span style="display:flex;"><span>    │   └── 58d749d3c05cd4088561011226cee78ca0221c # TREE
+</span></span><span style="display:flex;"><span>    ├── 5d
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>    ├── a2
+</span></span><span style="display:flex;"><span>    │   └── 5b317275e2bc71863d2074c70eeb4137d8bb90 # COMMIT
+</span></span><span style="display:flex;"><span>    ├── a3
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>    └── ff
+</span></span></code></pre></div><p>使用 commit-tree，提交前面生成的 TREE 对象，生成了一个新的 object -&gt; COMMIT。这时 Object Database 中的层级关系如下：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>           +-------+
+</span></span><span style="display:flex;"><span>           | a25b1 |commit
+</span></span><span style="display:flex;"><span>           +-------+
+</span></span><span style="display:flex;"><span>               |
+</span></span><span style="display:flex;"><span>               v
+</span></span><span style="display:flex;"><span>           +-------+
+</span></span><span style="display:flex;"><span>           | 5c58d |tree
+</span></span><span style="display:flex;"><span>           ++----+-+
+</span></span><span style="display:flex;"><span>            |    |
+</span></span><span style="display:flex;"><span>    v-------+    +-------v
+</span></span><span style="display:flex;"><span>+-------+            +-------+
+</span></span><span style="display:flex;"><span>| 3ac6f |blob        | 2f942 |blob
+</span></span><span style="display:flex;"><span>+-------+            +-------+
+</span></span></code></pre></div><h2 id="变更版本库">变更版本库</h2>
 <p>现在我们已经完成了对 students 和 teachers 文件的原始追踪。现在，需要向 students 名单内新增一名学生，下面使用前面学习的命令来跟踪名单的变化：</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-fallback" data-lang="fallback">root@master:~/Github/test_git# echo &#34;Li Si&#34; &gt;&gt; students 
-root@master:~/Github/test_git# cat students 
-Zhang San
-Li Si
-root@master:~/Github/test_git# ../git/update-cache students 
-root@master:~/Github/test_git# tree .dircache/ -a
-.dircache/
-├── index
-└── objects
-    ├── 00
-    ├── 01
-		...
-    ├── 2f
-    │   └── 942698bb0133aa13b46a1001ec7a718dbc32b8
-    ├── 30
-		...
-    ├── 34
-    │   └── abcd2a605895826c8aee6a845ce630ffc7e4a9 # 新增 blob
-    ├── 35
-		...
-    ├── 3a
-    │   └── c6ffce6b04e98c992a7dde76a5b7fab88be34f
-    ├── 3b
-		...
-    ├── 5c
-    │   └── 58d749d3c05cd4088561011226cee78ca0221c
-    ├── 5d
-		...
-    ├── a2
-    │   └── 5b317275e2bc71863d2074c70eeb4137d8bb90
-    ├── a3
-		...
-    └── ff
-</code></pre></div><p>看一下新增的 BLOB 中是什么内容：</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-fallback" data-lang="fallback">root@master:~/Github/test_git# ../git/cat-file 34abcd2a605895826c8aee6a845ce630ffc7e4a9
-temp_git_file_MpII34: blob
-root@master:~/Github/test_git# cat temp_git_file_MpII34 
-Zhang San
-Li Si
-</code></pre></div><p>新增的 BLOB 中是 students 名单的最新内容。下面将这个 BLOB 加入版本库层级：</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-fallback" data-lang="fallback">root@master:~/Github/test_git# ../git/write-tree 
-e6cba6befd8de134a2b65970f4cc37a123fa3f54
-root@master:~/Github/test_git# ../git/commit-tree e6cba6befd8de134a2b65970f4cc37a123fa3f54 -p a25b317275e2bc71863d2074c70eeb4137d8bb90 &lt; change.log 
-f68cca59ffa6ecd5e04b33accf86cd9931ef848f
-root@master:~/Github/test_git# cat f68cca59ffa6ecd5e04b33accf86cd9931ef848f
-cat: f68cca59ffa6ecd5e04b33accf86cd9931ef848f: No such file or directory
-root@master:~/Github/test_git# ../git/cat-file f68cca59ffa6ecd5e04b33accf86cd9931ef848f
-temp_git_file_5JBumK: commit
-root@master:~/Github/test_git# cat temp_git_file_5JBumK
-tree e6cba6befd8de134a2b65970f4cc37a123fa3f54
-parent a25b317275e2bc71863d2074c70eeb4137d8bb90
-author root &lt;root@master&gt; Sun Nov 29 07:03:39 2020
-committer root &lt;root@master&gt; Sun Nov 29 07:03:39 2020
-
-add student Li Si
-</code></pre></div><p>在 commit-tree 时，指定父 commit 为前一个 commit，这样我们就将这次修改的内容与修改前的内容联系了起来，下面是此时版本库中的层级关系：</p>
-<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-fallback" data-lang="fallback">           +-------+           +-------+
-           | a25b1 |commit --&gt; | fbf46 |commit
-           +---+---+           +---+---+
-               |                   |
-               v                   v
-           +---+---+           +---+---+
-           | 5c58d |tree       | e6cba |tree
-           ++----+-+           +-+---+-+
-            |    |               |   |
-    v-------+    +-------v v-----+   +----v
-+-------+            +-------+         +-------+
-| 3ac6f |blob        | 2f942 |blob     | 34abc |blob
-+-------+            +-------+         +-------+
-</code></pre></div><h2 id="总结">总结</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>root@master:~/Github/test_git# echo &#34;Li Si&#34; &gt;&gt; students 
+</span></span><span style="display:flex;"><span>root@master:~/Github/test_git# cat students 
+</span></span><span style="display:flex;"><span>Zhang San
+</span></span><span style="display:flex;"><span>Li Si
+</span></span><span style="display:flex;"><span>root@master:~/Github/test_git# ../git/update-cache students 
+</span></span><span style="display:flex;"><span>root@master:~/Github/test_git# tree .dircache/ -a
+</span></span><span style="display:flex;"><span>.dircache/
+</span></span><span style="display:flex;"><span>├── index
+</span></span><span style="display:flex;"><span>└── objects
+</span></span><span style="display:flex;"><span>    ├── 00
+</span></span><span style="display:flex;"><span>    ├── 01
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>    ├── 2f
+</span></span><span style="display:flex;"><span>    │   └── 942698bb0133aa13b46a1001ec7a718dbc32b8
+</span></span><span style="display:flex;"><span>    ├── 30
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>    ├── 34
+</span></span><span style="display:flex;"><span>    │   └── abcd2a605895826c8aee6a845ce630ffc7e4a9 # 新增 blob
+</span></span><span style="display:flex;"><span>    ├── 35
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>    ├── 3a
+</span></span><span style="display:flex;"><span>    │   └── c6ffce6b04e98c992a7dde76a5b7fab88be34f
+</span></span><span style="display:flex;"><span>    ├── 3b
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>    ├── 5c
+</span></span><span style="display:flex;"><span>    │   └── 58d749d3c05cd4088561011226cee78ca0221c
+</span></span><span style="display:flex;"><span>    ├── 5d
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>    ├── a2
+</span></span><span style="display:flex;"><span>    │   └── 5b317275e2bc71863d2074c70eeb4137d8bb90
+</span></span><span style="display:flex;"><span>    ├── a3
+</span></span><span style="display:flex;"><span>		...
+</span></span><span style="display:flex;"><span>    └── ff
+</span></span></code></pre></div><p>看一下新增的 BLOB 中是什么内容：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>root@master:~/Github/test_git# ../git/cat-file 34abcd2a605895826c8aee6a845ce630ffc7e4a9
+</span></span><span style="display:flex;"><span>temp_git_file_MpII34: blob
+</span></span><span style="display:flex;"><span>root@master:~/Github/test_git# cat temp_git_file_MpII34 
+</span></span><span style="display:flex;"><span>Zhang San
+</span></span><span style="display:flex;"><span>Li Si
+</span></span></code></pre></div><p>新增的 BLOB 中是 students 名单的最新内容。下面将这个 BLOB 加入版本库层级：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>root@master:~/Github/test_git# ../git/write-tree 
+</span></span><span style="display:flex;"><span>e6cba6befd8de134a2b65970f4cc37a123fa3f54
+</span></span><span style="display:flex;"><span>root@master:~/Github/test_git# ../git/commit-tree e6cba6befd8de134a2b65970f4cc37a123fa3f54 -p a25b317275e2bc71863d2074c70eeb4137d8bb90 &lt; change.log 
+</span></span><span style="display:flex;"><span>f68cca59ffa6ecd5e04b33accf86cd9931ef848f
+</span></span><span style="display:flex;"><span>root@master:~/Github/test_git# cat f68cca59ffa6ecd5e04b33accf86cd9931ef848f
+</span></span><span style="display:flex;"><span>cat: f68cca59ffa6ecd5e04b33accf86cd9931ef848f: No such file or directory
+</span></span><span style="display:flex;"><span>root@master:~/Github/test_git# ../git/cat-file f68cca59ffa6ecd5e04b33accf86cd9931ef848f
+</span></span><span style="display:flex;"><span>temp_git_file_5JBumK: commit
+</span></span><span style="display:flex;"><span>root@master:~/Github/test_git# cat temp_git_file_5JBumK
+</span></span><span style="display:flex;"><span>tree e6cba6befd8de134a2b65970f4cc37a123fa3f54
+</span></span><span style="display:flex;"><span>parent a25b317275e2bc71863d2074c70eeb4137d8bb90
+</span></span><span style="display:flex;"><span>author root &lt;root@master&gt; Sun Nov 29 07:03:39 2020
+</span></span><span style="display:flex;"><span>committer root &lt;root@master&gt; Sun Nov 29 07:03:39 2020
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>add student Li Si
+</span></span></code></pre></div><p>在 commit-tree 时，指定父 commit 为前一个 commit，这样我们就将这次修改的内容与修改前的内容联系了起来，下面是此时版本库中的层级关系：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-fallback" data-lang="fallback"><span style="display:flex;"><span>           +-------+           +-------+
+</span></span><span style="display:flex;"><span>           | a25b1 |commit --&gt; | fbf46 |commit
+</span></span><span style="display:flex;"><span>           +---+---+           +---+---+
+</span></span><span style="display:flex;"><span>               |                   |
+</span></span><span style="display:flex;"><span>               v                   v
+</span></span><span style="display:flex;"><span>           +---+---+           +---+---+
+</span></span><span style="display:flex;"><span>           | 5c58d |tree       | e6cba |tree
+</span></span><span style="display:flex;"><span>           ++----+-+           +-+---+-+
+</span></span><span style="display:flex;"><span>            |    |               |   |
+</span></span><span style="display:flex;"><span>    v-------+    +-------v v-----+   +----v
+</span></span><span style="display:flex;"><span>+-------+            +-------+         +-------+
+</span></span><span style="display:flex;"><span>| 3ac6f |blob        | 2f942 |blob     | 34abc |blob
+</span></span><span style="display:flex;"><span>+-------+            +-------+         +-------+
+</span></span></code></pre></div><h2 id="总结">总结</h2>
 <p>可以看出，最初版本的 Git 有 3 个最核心的命令：</p>
 <ol>
 <li>通过 update-cache，为修改的文件生成一个副本 BLOB</li>
