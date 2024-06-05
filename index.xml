@@ -21,7 +21,7 @@ tag spec permalink major changes spec-v1.0.0 spec at v1.0.0 Removed non-list con
     </item>
     
     <item>
-      <title>Flannel后端对比</title>
+      <title>Flannel 后端对比</title>
       <link>https://drivebyer.github.io/posts/flannel-backends-diff/</link>
       <pubDate>Fri, 03 Jun 2022 22:36:36 +0800</pubDate>
       
@@ -33,7 +33,7 @@ tag spec permalink major changes spec-v1.0.0 spec at v1.0.0 Removed non-list con
     </item>
     
     <item>
-      <title>Istio自动注入Sidecar实现原理</title>
+      <title>Istio 自动注入 Sidecar 实现原理</title>
       <link>https://drivebyer.github.io/posts/istio%E8%87%AA%E5%8A%A8%E6%B3%A8%E5%85%A5sidecar%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/</link>
       <pubDate>Sun, 24 Apr 2022 19:46:09 +0800</pubDate>
       
@@ -46,7 +46,7 @@ Istio 架构上分为控制平面与数据平面。如下图所示，在数据�
     </item>
     
     <item>
-      <title>VLAN与VxLAN</title>
+      <title>VLAN 与 VxLAN</title>
       <link>https://drivebyer.github.io/posts/vlan%E4%B8%8Evxlan/</link>
       <pubDate>Tue, 12 Apr 2022 21:11:04 +0800</pubDate>
       
